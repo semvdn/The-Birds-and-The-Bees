@@ -7,13 +7,17 @@ class Flock {
         this.boids.push(boid);
     }
 
-    run(ctx, width, height, insects = []) {
+    run(ctx, width, height, others = [], plants = []) {
         for (let i = this.boids.length - 1; i >= 0; i--) {
             const boid = this.boids[i];
             boid.edges(width, height);
 
             if (boid instanceof Bird) {
-                boid.flock(this.boids, insects);
+                boid.flock(this.boids, others);
+            } else if (boid instanceof Insect) {
+                const seek = boid.seekFood(plants);
+                boid.acceleration.add(seek);
+                boid.flock(this.boids);
             } else {
                 boid.flock(this.boids);
             }
@@ -22,9 +26,9 @@ class Flock {
             boid.show(ctx);
 
             if (boid instanceof Bird) {
-                for (let j = insects.length - 1; j >= 0; j--) {
-                    if (boid.position.dist(insects[j].position) < 10) {
-                        insects.splice(j, 1);
+                for (let j = others.length - 1; j >= 0; j--) {
+                    if (boid.position.dist(others[j].position) < 10) {
+                        others.splice(j, 1);
                     }
                 }
             }

@@ -1,96 +1,108 @@
-# Boids Simulation: Planning and Architecture
+# Planning and Architecture for the Dynamic Plant Ecosystem
 
-## 1. Introduction
+This document outlines the plan for integrating a dynamic plant ecosystem into the existing Boids simulation.
 
-This document outlines the planning and architecture for a JavaScript-based Boids simulation. The project's goal is to create a visually engaging simulation of flocking behavior with two distinct types of agents: insects and birds. The insects will exhibit standard flocking behavior, while the birds will form their own flock and actively hunt the insects, introducing a predator-prey dynamic to the classic Boids algorithm.
+## 1. Existing Architecture Summary
 
-## 2. Core Concepts
+The current architecture is composed of four main JavaScript files:
 
-The simulation is based on the Boids algorithm, which simulates the flocking behavior of birds. Each "boid" in the simulation follows a set of simple rules, which, when applied to a group, result in complex, emergent behavior that mimics natural flocks.
+*   **`vector.js`**: Provides a `Vector` class for 2D vector math, used for position, velocity, and acceleration.
+*   **`boid.js`**: Defines the base `Boid` class with flocking behaviors (alignment, cohesion, separation) and `Insect` and `Bird` subclasses. Birds have a `hunt` method targeting insects.
+*   **`flock.js`**: Manages a collection of boids within a `Flock` class. The `run` method updates and renders each boid in the flock.
+*   **`main.js`**: Initializes the canvas, creates `Flock` instances for insects and birds, and runs the main animation loop (`animate`).
 
-The three core rules of the Boids algorithm are:
+The animation loop in `main.js` calls the `run` method of each flock, which in turn updates and renders each boid.
 
-*   **Cohesion:** Each boid steers to move toward the average position of its local flockmates. This rule keeps the flock together.
-*   **Separation:** Each boid steers to avoid crowding its local flockmates. This rule prevents boids from colliding with each other.
-*   **Alignment:** Each boid steers toward the average heading (direction and speed) of its local flockmates. This rule makes the flock move in a coordinated manner.
+## 2. Proposed New Classes
 
-## 3. Simulation-Specific Features
+To implement the dynamic plant ecosystem, we will introduce the following new classes:
 
-### Two Flocks
+### `Plant`
 
-The simulation will feature two distinct types of boids, each with its own flock:
+*   **Description:** Represents a single plant or tree. It will be the root of the fractal structure.
+*   **Properties:**
+    *   `position`: A `Vector` object representing the base of the plant on the canvas.
+    *   `branches`: An array of `Branch` objects.
+    *   `maxGenerations`: The maximum depth of the fractal branching.
+*   **Methods:**
+    *   `constructor(x, y)`: Initializes the plant at a specific position and generates the initial branches.
+    *   `grow()`: A method to regenerate leaves after they have been consumed.
+    *   `show(ctx)`: Renders the entire plant by calling the `show` method of its branches.
 
-*   **Insects:** A flock of boids that follow the three standard Boids rules. They will be the prey in the simulation.
-*   **Birds:** A flock of boids that also follow the standard rules but with an additional "hunt" behavior. They will be the predators.
+### `Branch`
 
-Each flock will be managed independently, with its own set of boids and potentially slightly different parameters for cohesion, separation, and alignment to create distinct movement patterns.
+*   **Description:** Represents a branch of a plant. Each branch can have sub-branches, creating a fractal pattern.
+*   **Properties:**
+    *   `start`: A `Vector` object for the starting point of the branch.
+    *   `end`: A `Vector` object for the ending point of the branch.
+    *   `generation`: The depth of the branch in the fractal structure.
+    *   `children`: An array of child `Branch` objects.
+    *   `leaf`: A `Leaf` object if the branch is at the tip.
+*   **Methods:**
+    *   `constructor(start, end, generation)`: Initializes the branch.
+    *   `show(ctx)`: Draws the branch on the canvas.
+    *   `createChildren(maxGenerations)`: Creates sub-branches if the current generation is less than the maximum.
 
-### Hunting Behavior
+### `Leaf`
 
-The hunting behavior of the birds adds a layer of complexity to the simulation:
+*   **Description:** Represents a leaf at the tip of a branch, which serves as a food source.
+*   **Properties:**
+    *   `position`: A `Vector` object for the center of the leaf.
+    *   `size`: The size of the leaf.
+    *   `color`: The color of the leaf.
+    *   `isEaten`: A boolean to track if the leaf has been consumed.
+*   **Methods:**
+    *   `constructor(position)`: Initializes the leaf.
+    *   `show(ctx)`: Draws the leaf on the canvas.
+    *   `regrow()`: Resets the `isEaten` status.
 
-*   **Targeting:** A bird will scan for the nearest insect within its perception radius. If an insect is found, the bird will apply a steering force toward that insect, making it a target.
-*   **Insect Reaction:** Insects will have a "fear" radius. If a bird enters this radius, the insect will have a strong steering force applied to move directly away from the bird, overriding its normal flocking behavior temporarily.
-*   **Capture:** If a bird gets close enough to a targeted insect, the insect is considered "eaten" and will be removed from the simulation.
+## 3. Class Interactions
 
-### Boundary Handling
-
-When a boid reaches the edge of the simulation area, it will wrap around to the opposite side. For example, a boid exiting the right side of the screen will reappear on the left side, maintaining its velocity. This creates a continuous, seamless world for the boids.
-
-## 4. Proposed Architecture
-
-### Component Breakdown
-
-The application will be broken down into the following components:
-
-*   **`Boid`:** A class representing a single boid. It will manage its own position, velocity, and acceleration, and will have methods to apply the Boids rules. There will be subclasses for `Insect` and `Bird` to handle their specific behaviors.
-*   **`Flock`:** A class to manage a collection of boids. It will be responsible for updating and rendering all the boids within it.
-*   **`Simulation`:** The main class that initializes and runs the simulation loop. It will manage the flocks, handle user input, and orchestrate the updates of all simulation elements.
-*   **`Renderer`:** A component responsible for drawing the boids and the simulation environment onto the screen.
+The new classes will interact with the existing classes as follows:
 
 ```mermaid
 graph TD
-    A[Simulation] --> B[Flock: Insects]
-    A --> C[Flock: Birds]
-    B --> D[Boid: Insect]
-    C --> E[Boid: Bird]
-    A --> F[Renderer]
-    F --> G[HTML5 Canvas]
+    subgraph Simulation
+        main_js[main.js] -- creates --> insectFlock[insectFlock: Flock]
+        main_js -- creates --> birdFlock[birdFlock: Flock]
+        main_js -- creates --> plantEcosystem[plantEcosystem: Plant[]]
+    end
+
+    subgraph Boids
+        insectFlock -- contains --> Insect
+        birdFlock -- contains --> Bird
+        Bird -- hunts --> Insect
+    end
+
+    subgraph Plants
+        plantEcosystem -- contains --> Plant
+        Plant -- has --> Branch
+        Branch -- has --> Leaf
+    end
+
+    Insect -- eats --> Leaf
 ```
 
-### Data Structures
+*   **`main.js`**: Will be responsible for creating and managing an array of `Plant` objects.
+*   **`Insect`**: The `Insect` class will be modified to seek out `Leaf` objects as a food source. This will require a new "seek" behavior to be added to the `Insect` class.
+*   **`Flock`**: The `run` method for the `insectFlock` will need to be updated to pass the array of plants to the insects so they can find leaves to eat.
 
-*   **Boids:** Each boid will be an object with properties for its position (a 2D vector), velocity (a 2D vector), and other simulation-specific parameters like max speed and max force.
-*   **Flocks:** Each flock will be an array of `Boid` objects.
-*   **Spatial Partitioning (Optional):** For performance optimization with a large number of boids, a spatial partitioning data structure like a quadtree could be used to speed up the process of finding local flockmates for each boid.
+## 4. Rendering Integration
 
-### Rendering
+The rendering of the plants will be handled within the existing `animate` loop in `main.js`.
 
-The simulation will be rendered using the **HTML5 Canvas API**. Each boid will be drawn as a simple shape (e.g., a triangle or circle) on the canvas. The `Renderer` will be responsible for clearing the canvas and redrawing all boids in their new positions on each frame of the simulation loop.
+1.  An array of `Plant` objects will be created in `main.js`.
+2.  In the `animate` function, after clearing the canvas, we will iterate through the plants array and call the `show(ctx)` method for each plant. This will happen before rendering the flocks to ensure plants are drawn in the background.
 
-## 5. Implementation Plan
+## 5. Food Consumption and Regrowth
 
-### Milestones
+*   **Consumption:**
+    1.  The `Insect` class will have a new method, `seekFood(plants)`, which will find the nearest `Leaf` that is not eaten.
+    2.  This will be implemented as a new steering behavior, similar to `hunt` in the `Bird` class.
+    3.  When an insect is close enough to a leaf, it will "eat" it, setting the `isEaten` flag on the `Leaf` to `true`.
+*   **Regrowth:**
+    1.  The `Plant` class will have a `grow()` method.
+    2.  This method will be called periodically (e.g., using `setInterval` or by checking frame counts in the `animate` loop).
+    3.  The `grow()` method will iterate through its branches and leaves, and for any leaf where `isEaten` is `true`, it will call the `regrow()` method on the leaf, which will reset the flag and make it visible again.
 
-1.  **Basic Boid and Vector:** Create a `Vector` class for 2D math and a basic `Boid` class with position, velocity, and update methods.
-2.  **Canvas Setup:** Set up the HTML5 canvas and a basic rendering loop.
-3.  **Implement Boids Rules:** Implement the cohesion, separation, and alignment rules in the `Boid` class.
-4.  **Flock Management:** Create a `Flock` class to manage and update a group of boids.
-5.  **Two Flocks:** Instantiate two separate flocks for insects and birds.
-6.  **Hunting and Evasion:** Implement the hunting behavior for birds and the evasion behavior for insects.
-7.  **UI and Controls:** Add UI elements to control simulation parameters (e.g., number of boids, visual parameters).
-
-### File Structure
-
-A possible file structure for the project:
-
-```
-boids-simulation/
-├── index.html
-├── css/
-│   └── style.css
-└── js/
-    ├── main.js         # Main simulation logic
-    ├── boid.js         # Boid class
-    ├── flock.js        # Flock class
-    └── vector.js       # 2D Vector library
+This plan provides a clear path for integrating the dynamic plant ecosystem into the Boids simulation without major refactoring of the existing code.

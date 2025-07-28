@@ -128,6 +128,49 @@ class Insect extends Boid {
     show(ctx) {
         super.show(ctx, 'green');
     }
+
+    seekFood(plants) {
+        let closestFood = null;
+        let closestDist = Infinity;
+
+        for (const plant of plants) {
+            for (const branch of plant.branches) {
+                this.findClosestLeaf(branch, (leaf) => {
+                    if (!leaf.isEaten) {
+                        const d = this.position.dist(leaf.position);
+                        if (d < closestDist) {
+                            closestDist = d;
+                            closestFood = leaf;
+                        }
+                    }
+                });
+            }
+        }
+
+        if (closestFood) {
+            if (this.position.dist(closestFood.position) < 5) {
+                closestFood.eat();
+                return new Vector();
+            }
+            let target = Vector.sub(closestFood.position, this.position);
+            target.normalize();
+            target.mult(this.maxSpeed);
+            let steer = Vector.sub(target, this.velocity);
+            steer.limit(this.maxForce);
+            return steer;
+        }
+
+        return new Vector();
+    }
+
+    findClosestLeaf(branch, callback) {
+        if (branch.leaf) {
+            callback(branch.leaf);
+        }
+        for (const child of branch.children) {
+            this.findClosestLeaf(child, callback);
+        }
+    }
 }
 
 class Bird extends Boid {

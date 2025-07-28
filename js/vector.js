@@ -55,4 +55,20 @@ class Vector {
         const dy = this.y - v.y;
         return Math.sqrt(dx * dx + dy * dy);
     }
+
+    static add(v1, v2) {
+        return new Vector(v1.x + v2.x, v1.y + v2.y);
+    }
+
+    copy() {
+        return new Vector(this.x, this.y);
+    }
+
+    rotate(angle) {
+        const x = this.x * Math.cos(angle) - this.y * Math.sin(angle);
+        const y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
+        this.x = x;
+        this.y = y;
+        return this;
+    }
 }
