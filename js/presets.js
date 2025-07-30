@@ -62,8 +62,8 @@ export const TREE_PRESETS = [
 export const SHRUB_PRESETS = [
     { type: 'leafy', rules: { 'X': 'F-[[XL]+XL]+F[+FXL]-XL', 'F': 'FF' }, iterations: 4, angle: 30, initialThickness: 4, barkColor: '#4c956c', leafColor: '#fefee3', leafShape: 'oval' },
     { type: 'leafy', rules: { 'X': 'F[+XL][-XL]FXL', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#5fa8d3', leafColor: '#f2f2f2', leafShape: 'willow' },
-    { type: 'flower', flowerShape: 'petal', rules: { 'X': 'F[+F-XO][-F+XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 5, barkColor: '#6a994e' },
-    { type: 'flower', flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 5, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
+    { type: 'flower', flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
+    { type: 'flower', flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
 ];
 
 export const WEED_PRESETS = [
