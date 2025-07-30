@@ -82,7 +82,9 @@ export const HIVE_SETTINGS = {
 };
 
 export const NEST_SETTINGS = {
-    BEES_FOR_NEW_BIRD: 2
+    BEES_FOR_NEW_BIRD: 2,
+    HATCH_TIME_SECONDS: 5, // Time in seconds for an egg to hatch
+    NESTING_TIME_SECONDS: 3 // Time in seconds birds spend in nest before laying egg
 };
 
 export const BIRD_SETTINGS = {

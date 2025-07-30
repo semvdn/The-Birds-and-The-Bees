@@ -115,20 +115,42 @@ function animate() {
 
     // Bird Reproduction
     for (const nest of nests) {
-        if (nest.occupants.size >= 2 && birds.length < MAX_BIRDS) {
-            const matingPair = Array.from(nest.occupants);
-            
-            // Spawn a new bird at the nest
-            const newBird = new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest);
-            birds.push(newBird);
-            
-            // Reset the parents so they can hunt again
-            for (const parent of matingPair) {
-                parent.resetMating();
+        if (nest.occupants.size >= 2 && birds.length < MAX_BIRDS && !nest.hasEgg && nest.nestingCountdown <= 0) {
+            // Start nesting countdown
+            nest.nestingCountdown = NEST_SETTINGS.NESTING_TIME_SECONDS * 1000;
+            console.log(`Nest at (${nest.position.x}, ${nest.position.y}) has two birds. Starting nesting countdown: ${nest.nestingCountdown / 1000} seconds.`);
+        }
+
+        if (nest.occupants.size >= 2 && nest.nestingCountdown > 0) {
+            nest.nestingCountdown -= (1000 / 60); // Decrement nesting countdown
+            if (nest.nestingCountdown <= 0) {
+                // Lay egg
+                nest.hasEgg = true;
+                nest.hatchingCountdown = NEST_SETTINGS.HATCH_TIME_SECONDS * 1000;
+                console.log(`Nest at (${nest.position.x}, ${nest.position.y}) now has an egg. Hatching in ${nest.hatchingCountdown / 1000} seconds.`);
+
+                // Reset parents and clear nest occupants after egg is laid
+                const matingPair = Array.from(nest.occupants);
+                for (const parent of matingPair) {
+                    parent.resetMating();
+                }
+                nest.occupants.clear();
             }
-            
-            // Clear the nest for the next couple
-            nest.occupants.clear();
+        }
+
+        // Handle egg hatching
+        if (nest.hasEgg) {
+            nest.hatchingCountdown -= (1000 / 60); // Assuming 60 FPS, decrement by time per frame
+            if (nest.hatchingCountdown <= 0) {
+                // Spawn a new bird at the nest
+                const newBird = new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest);
+                birds.push(newBird);
+                console.log(`Bird hatched at nest (${nest.position.x}, ${nest.position.y})!`);
+
+                // Reset nest state
+                nest.hasEgg = false;
+                nest.hatchingCountdown = 0;
+            }
         }
     }
 
@@ -204,6 +226,9 @@ function initialize() {
                 hives.push(newHome);
             } else {
                 newHome.occupants = new Set();
+                newHome.hasEgg = false; // Initialize nest without an egg
+                newHome.hatchingCountdown = 0; // Initialize countdown
+                newHome.nestingCountdown = 0; // Initialize nesting countdown
                 const nestRadius = 15;
                 newHome.radius = nestRadius; // Add radius property for drawing offset
                 newHome.twigs = [];

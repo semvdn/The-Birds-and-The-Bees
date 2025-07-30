@@ -56,9 +56,24 @@ export class Bird extends Boid {
                     other.state = 'PAIRED';
 
                     // They agree to go to one of their nests
-                    this.matingNest = this.homeNest;
-                    other.matingNest = this.homeNest;
-                    break; 
+                    // Check if the home nest is occupied by an egg
+                    if (!this.homeNest.hasEgg) {
+                        this.matingNest = this.homeNest;
+                        other.matingNest = this.homeNest;
+                        break;
+                    } else {
+                        // If the home nest has an egg, try the other bird's home nest
+                        if (!other.homeNest.hasEgg) {
+                            this.matingNest = other.homeNest;
+                            other.matingNest = other.homeNest;
+                            break;
+                        } else {
+                            // Both home nests have eggs, reset mating state
+                            this.resetMating();
+                            other.resetMating();
+                            return;
+                        }
+                    }
                 }
             }
         }
@@ -71,6 +86,10 @@ export class Bird extends Boid {
         }
 
         const dist = Math.hypot(this.position.x - this.matingNest.position.x, this.position.y - this.matingNest.position.y);
+        if (this.matingNest.hasEgg) { // If nest becomes occupied while en route
+            this.resetMating();
+            return;
+        }
         if (dist < 15) { // Arrived at nest
             this.matingNest.occupants.add(this);
         } else {

@@ -117,5 +117,22 @@ export function drawNest(ctx, nest) {
         ctx.quadraticCurveTo(twig.cpX, twig.cpY, twig.x2, twig.y2);
         ctx.stroke();
     }
+
+    if (nest.hasEgg && nest.hatchingCountdown > 0) {
+        drawEgg(ctx, nest);
+    }
+    
+    ctx.restore();
+}
+
+function drawEgg(ctx, nest) {
+    ctx.save();
+    // Position the egg slightly above the center of the nest
+    ctx.translate(0, -nest.radius * 0.1);
+    ctx.fillStyle = '#F0E68C'; // Light brown/beige color for the egg
+    ctx.beginPath();
+    // Draw an oval for the egg
+    ctx.ellipse(0, 0, nest.radius * 0.6, nest.radius * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 }
