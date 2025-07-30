@@ -78,11 +78,11 @@ export const WEED_PRESETS = [
 
 // --- BOID SIMULATION CONSTANTS ---
 export const HIVE_SETTINGS = {
-    NECTAR_FOR_NEW_BEE: 20
+    NECTAR_FOR_NEW_BEE: 10
 };
 
 export const NEST_SETTINGS = {
-    BEES_FOR_NEW_BIRD: 5
+    BEES_FOR_NEW_BIRD: 2
 };
 
 export const BIRD_SETTINGS = {
@@ -93,7 +93,7 @@ export const BIRD_SETTINGS = {
     alignmentFactor: 0.05,
     cohesionFactor: 0.005,
     turnFactor: 0.2,
-    huntFactor: 0.001,
+    huntFactor: 0.002,
     killRange: 5
 };
 
@@ -105,6 +105,6 @@ export const BEE_SETTINGS = {
     alignmentFactor: 0.03,
     cohesionFactor: 0.002,
     turnFactor: 0.3,
-    evadeFactor: 0.03,
+    evadeFactor: 0.01,
     nectarCapacity: 5
 };

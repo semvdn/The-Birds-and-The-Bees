@@ -72,7 +72,8 @@ function animate() {
     for (const weed of weeds) drawPlant(weed, ctx, canvas, frame);
 
     // Draw nests and hives
-    for (const hive of hives) drawHive(ctx, hive);
+    const isOverlayVisible = !overlay.classList.contains('overlay-hidden');
+    for (const hive of hives) drawHive(ctx, hive, isOverlayVisible, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE);
     for (const nest of nests) drawNest(ctx, nest);
 
     // Update and draw boids

@@ -30,7 +30,7 @@ export function drawBee(ctx, boid) {
     ctx.restore();
 }
 
-export function drawHive(ctx, hive) {
+export function drawHive(ctx, hive, isOverlayVisible, nectarForNewBee) {
     ctx.save();
     ctx.translate(hive.position.x, hive.position.y);
 
@@ -82,6 +82,23 @@ export function drawHive(ctx, hive) {
     ctx.fill();
 
     ctx.restore();
+
+    if (isOverlayVisible) {
+        const barWidth = 30;
+        const barHeight = 5;
+        const barX = hive.position.x - (barWidth / 2);
+        const barY = hive.position.y - 40; // Position above the hive
+
+        // Background bar
+        ctx.fillStyle = '#555555'; // Grey background
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // Foreground bar
+        const progress = hive.nectar / nectarForNewBee;
+        const progressBarWidth = barWidth * Math.min(1, progress); // Cap at 100%
+        ctx.fillStyle = '#00FF00'; // Green foreground
+        ctx.fillRect(barX, barY, progressBarWidth, barHeight);
+    }
 }
 
 export function drawNest(ctx, nest) {
