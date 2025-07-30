@@ -8,7 +8,7 @@ import { setupPlantData } from './lsystem.js';
 import { preRenderPlant, drawPlant } from './drawing.js';
 import { Bird } from './boids/bird.js';
 import { Bee } from './boids/bee.js';
-import { drawBird, drawBee, drawHive, drawNest } from './boids/drawing.js';
+import { drawBird, drawBee, drawHive, drawNest, drawHiveProgressBar } from './boids/drawing.js';
 
 const canvas = document.getElementById('treeCanvas');
 const ctx = canvas.getContext('2d');
@@ -61,20 +61,28 @@ function animate() {
 
     const world = { birds, bees, flowers, hives, nests, canvas };
 
-    // Update and draw plants
-    for (const tree of trees) drawPlant(tree, ctx, canvas, frame);
-    for (const shrub of shrubs) {
-        if (shrub.type === 'flower' && shrub.nectar < shrub.presetNectar) {
-            shrub.nectar += shrub.nectarRegen;
-        }
-        drawPlant(shrub, ctx, canvas, frame);
-    }
-    for (const weed of weeds) drawPlant(weed, ctx, canvas, frame);
+    // Combine all plants and sort them by their x-coordinate for drawing order
+    const allPlants = [...trees, ...shrubs, ...weeds];
+    allPlants.sort((a, b) => b.x - a.x); // Sort by x-coordinate (right to left for depth)
 
-    // Draw nests and hives
-    const isOverlayVisible = !overlay.classList.contains('overlay-hidden');
-    for (const hive of hives) drawHive(ctx, hive, isOverlayVisible, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE);
-    for (const nest of nests) drawNest(ctx, nest);
+    // Draw plants and their associated homes
+    for (const plant of allPlants) {
+        drawPlant(plant, ctx, canvas, frame);
+        if (plant.plantType === 'tree') {
+            // Draw nests associated with this tree
+            for (const nest of nests) {
+                if (nest.tree === plant) {
+                    drawNest(ctx, nest);
+                }
+            }
+            // Draw hives associated with this tree
+            for (const hive of hives) {
+                if (hive.tree === plant) {
+                    drawHive(ctx, hive); // Call modified drawHive
+                }
+            }
+        }
+    }
 
     // Update and draw boids
     for (const bird of birds) {
@@ -101,7 +109,8 @@ function animate() {
     birds = birds.filter(bird => bird.isAlive);
 
     // Update population display if overlay is visible
-    if (!overlay.classList.contains('overlay-hidden')) {
+    const isOverlayVisible = !overlay.classList.contains('overlay-hidden');
+    if (isOverlayVisible) {
         updatePopulationDisplay();
     }
     
@@ -154,11 +163,17 @@ function animate() {
         }
     }
 
-
     // Draw ground
     const groundHeight = 30;
     ctx.fillStyle = '#4a5742';
     ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+
+    // Draw hive progress bars
+    if (isOverlayVisible) {
+        for (const hive of hives) {
+            drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE);
+        }
+    }
 
     requestAnimationFrame(animate);
 }
