@@ -1,0 +1,27 @@
+#overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 200px;
+    height: 80px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+    transition: opacity 0.5s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#overlay p {
+    margin: 5px 0;
+}
+
+.overlay-hidden {
+    opacity: 0;
+    pointer-events: none;
+}

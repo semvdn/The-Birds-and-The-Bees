@@ -12,6 +12,9 @@ import { drawBird, drawBee, drawHive, drawNest } from './boids/drawing.js';
 
 const canvas = document.getElementById('treeCanvas');
 const ctx = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const beePopulationElement = document.getElementById('bee-population');
+const birdPopulationElement = document.getElementById('bird-population');
 
 let trees = [], shrubs = [], weeds = [], flowers = [];
 let birds = [], bees = [];
@@ -95,6 +98,11 @@ function animate() {
     // Filter out dead boids
     bees = bees.filter(bee => bee.isAlive);
     birds = birds.filter(bird => bird.isAlive);
+
+    // Update population display if overlay is visible
+    if (!overlay.classList.contains('overlay-hidden')) {
+        updatePopulationDisplay();
+    }
     
     // Bee Reproduction
     for (const hive of hives) {
@@ -130,6 +138,11 @@ function animate() {
     ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
 
     requestAnimationFrame(animate);
+}
+
+function updatePopulationDisplay() {
+    beePopulationElement.textContent = `Bee Population: ${bees.length}`;
+    birdPopulationElement.textContent = `Bird Population: ${birds.length}`;
 }
 
 function getStaticBranchPosition(plant, branchPoint) {
@@ -264,5 +277,13 @@ function initialize() {
 }
 
 window.addEventListener('resize', initialize);
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'M' || event.key === 'm') {
+        overlay.classList.toggle('overlay-hidden');
+        if (!overlay.classList.contains('overlay-hidden')) {
+            updatePopulationDisplay(); // Update immediately when shown
+        }
+    }
+});
 initialize();
 animate();
