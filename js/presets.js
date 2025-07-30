@@ -4,6 +4,9 @@ export const MAX_TREES = 6;
 export const GLOBAL_WIND_STRENGTH = 2.0;
 export const SHRUB_WIND_MULTIPLIER = 2.0;
 export const WEED_WIND_MULTIPLIER = 4.0;
+export const MAX_BEES = 150;
+export const MAX_BIRDS = 20;
+export const MIN_HOME_SEPARATION = 40; // Minimum pixels between nests/hives on the same tree
 
 // --- PRESET DEFINITIONS ---
 export const PASTEL_FLOWER_COLORS = ['#ffadad', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#a0c4ff', '#bdb2ff', '#ffc6ff'];
@@ -12,10 +15,10 @@ export const TREE_PRESETS = [
     {
         type: 'leafy', name: 'classic',
         rules: {
-            'X': [ // Significantly different structural variations
-                'F+[[XL]-XL]-F[-FXL]+XL',  // Original complex
-                'F[+F[L]X][-F[L]X]FXL',    // Forking structure
-                'F[+XL]F[-XL][X]L'         // Strong trunk with a top tuft
+            'X': [
+                'F+[[XL]-XL]-F[-FXL]+XL',
+                'F[+F[L]X][-F[L]X]FXL',
+                'F[+XL]F[-XL][X]L'
             ],
             'F': 'FF'
         },
@@ -25,9 +28,9 @@ export const TREE_PRESETS = [
         type: 'leafy', name: 'upward',
         rules: {
             'X': [
-                'F[+XL]F[-XL]+X',         // Original upward
-                'FF[+X[L]][-X[L]]',       // Taller, pine-like
-                'F[+X[L]][-X[L]]+FXL'      // Bushier at the tips
+                'F[+XL]F[-XL]+X',
+                'FF[+X[L]][-X[L]]',
+                'F[+X[L]][-X[L]]+FXL'
             ],
             'F': 'FF'
         },
@@ -37,9 +40,9 @@ export const TREE_PRESETS = [
         type: 'leafy', name: 'weeping',
         rules: {
             'X': [
-                'F[--XL]F[++XL]FXL',       // Original weeping
-                'F[--F[L]X]F[++F[L]X]FX',  // More pronounced droop
-                'F[---XL][++XL]FXL'        // Asymmetric weeping
+                'F[--XL]F[++XL]FXL',
+                'F[--F[L]X]F[++F[L]X]FX',
+                'F[---XL][++XL]FXL'
             ],
             'F': 'FF'
         },
@@ -49,9 +52,9 @@ export const TREE_PRESETS = [
         type: 'leafy', name: 'broadleaf',
         rules: {
             'X': [
-                'F[+XL][-XL]F[+XL]X',     // Original wide
-                'FF[-[XL]+[XL]]F[+X[L]]', // Stronger trunk, wide crown
-                'F[+F[-XL]][-F[+XL]]FXL'   // Gnarled, wide branches
+                'F[+XL][-XL]F[+XL]X',
+                'FF[-[XL]+[XL]]F[+X[L]]',
+                'F[+F[-XL]][-F[+XL]]FXL'
             ],
             'F': 'FF'
         },
@@ -62,8 +65,8 @@ export const TREE_PRESETS = [
 export const SHRUB_PRESETS = [
     { type: 'leafy', rules: { 'X': 'F-[[XL]+XL]+F[+FXL]-XL', 'F': 'FF' }, iterations: 4, angle: 30, initialThickness: 4, barkColor: '#4c956c', leafColor: '#fefee3', leafShape: 'oval' },
     { type: 'leafy', rules: { 'X': 'F[+XL][-XL]FXL', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#5fa8d3', leafColor: '#f2f2f2', leafShape: 'willow' },
-    { type: 'flower', flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
-    { type: 'flower', flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
+    { type: 'flower', nectar: 10, nectarRegen: 0.01, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
+    { type: 'flower', nectar: 15, nectarRegen: 0.015, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
 ];
 
 export const WEED_PRESETS = [
@@ -74,10 +77,18 @@ export const WEED_PRESETS = [
 ];
 
 // --- BOID SIMULATION CONSTANTS ---
+export const HIVE_SETTINGS = {
+    NECTAR_FOR_NEW_BEE: 20
+};
+
+export const NEST_SETTINGS = {
+    BEES_FOR_NEW_BIRD: 5
+};
+
 export const BIRD_SETTINGS = {
     maxSpeed: 3,
-    visualRange: 75,
-    separationDistance: 20,
+    visualRange: 150,
+    separationDistance: 25,
     separationFactor: 0.05,
     alignmentFactor: 0.05,
     cohesionFactor: 0.005,
@@ -86,13 +97,14 @@ export const BIRD_SETTINGS = {
     killRange: 5
 };
 
-export const INSECT_SETTINGS = {
-    maxSpeed: 2,
-    visualRange: 50,
-    separationDistance: 15,
+export const BEE_SETTINGS = {
+    maxSpeed: 2.5,
+    visualRange: 70,
+    separationDistance: 20,
     separationFactor: 0.05,
     alignmentFactor: 0.03,
     cohesionFactor: 0.002,
     turnFactor: 0.3,
-    evadeFactor: 0.02
+    evadeFactor: 0.03,
+    nectarCapacity: 5
 };

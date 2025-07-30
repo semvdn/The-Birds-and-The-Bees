@@ -1,3 +1,27 @@
+function findBranchPoints(lSystemString) {
+    const points = [];
+    let depth = 0;
+    const minTrunkSegments = 3; // Ensure nests/hives are not at the very base
+    let trunkSegments = 0;
+
+    for (let i = 0; i < lSystemString.length; i++) {
+        const char = lSystemString[i];
+        if (char === 'F' && depth === 0) {
+            trunkSegments++;
+        }
+        if (char === '[' && trunkSegments >= minTrunkSegments) {
+            if (depth === 0) { // Only consider main branches off the trunk
+                points.push({ index: i });
+            }
+            depth++;
+        } else if (char === ']') {
+            depth--;
+        }
+        if (points.length >= 3) break; // Limit to the first 3 suitable branches
+    }
+    return points;
+}
+
 export function generateLSystem(iterations, rules) {
     let currentString = 'X';
     for (let i = 0; i < iterations; i++) {
@@ -38,6 +62,8 @@ export function setupPlantData(preset, plantType) {
     else length = 3;
 
     const lindenmayerString = generateLSystem(preset.iterations, preset.rules);
+    const branchPoints = plantType === 'tree' ? findBranchPoints(lindenmayerString) : [];
+
     const barkColors = [];
     const baseHex = parseInt(preset.barkColor.slice(1), 16);
     let r_base = (baseHex >> 16) & 0xff, g_base = (baseHex >> 8) & 0xff, b_base = baseHex & 0xff;
@@ -48,5 +74,5 @@ export function setupPlantData(preset, plantType) {
         }
     }
     const unscaledHeight = calculateMaxHeight(lindenmayerString, length, preset.angle);
-    return { ...preset, plantType, lindenmayerString, length, unscaledHeight, barkColors, stack: [] };
+    return { ...preset, plantType, lindenmayerString, length, unscaledHeight, barkColors, branchPoints, stack: [] };
 }

@@ -6,12 +6,12 @@ export class Boid {
         this.isAlive = true;
     }
 
-    update(boids, predators, prey, canvas) {
+    update(world) {
         if (!this.isAlive) return;
 
-        const separation = this.separation(boids);
-        const alignment = this.alignment(boids);
-        const cohesion = this.cohesion(boids);
+        const separation = this.separation(world.boids);
+        const alignment = this.alignment(world.boids);
+        const cohesion = this.cohesion(world.boids);
 
         this.velocity.x += separation.x * this.settings.separationFactor;
         this.velocity.y += separation.y * this.settings.separationFactor;
@@ -21,14 +21,14 @@ export class Boid {
         this.velocity.y += cohesion.y * this.settings.cohesionFactor;
 
         this.limitSpeed();
-        this.avoidEdges(canvas);
+        this.avoidEdges(world.canvas);
 
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
     }
 
     limitSpeed() {
-        const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+        const speed = Math.hypot(this.velocity.x, this.velocity.y);
         if (speed > this.settings.maxSpeed) {
             this.velocity.x = (this.velocity.x / speed) * this.settings.maxSpeed;
             this.velocity.y = (this.velocity.y / speed) * this.settings.maxSpeed;
@@ -47,11 +47,13 @@ export class Boid {
         const steering = { x: 0, y: 0 };
         let total = 0;
         for (const other of boids) {
-            if (other !== this) {
+            if (other !== this && other.isAlive) {
                 const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
-                if (distance < this.settings.separationDistance) {
-                    steering.x += (this.position.x - other.position.x) / distance;
-                    steering.y += (this.position.y - other.position.y) / distance;
+                if (distance > 0 && distance < this.settings.separationDistance) {
+                    let diffX = (this.position.x - other.position.x) / distance;
+                    let diffY = (this.position.y - other.position.y) / distance;
+                    steering.x += diffX;
+                    steering.y += diffY;
                     total++;
                 }
             }
@@ -67,7 +69,7 @@ export class Boid {
         const steering = { x: 0, y: 0 };
         let total = 0;
         for (const other of boids) {
-            if (other !== this) {
+            if (other !== this && other.isAlive) {
                 const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
                 if (distance < this.settings.visualRange) {
                     steering.x += other.velocity.x;
@@ -79,7 +81,7 @@ export class Boid {
         if (total > 0) {
             steering.x /= total;
             steering.y /= total;
-            const speed = Math.sqrt(steering.x * steering.x + steering.y * steering.y);
+            const speed = Math.hypot(steering.x, steering.y);
             if (speed > 0) {
                 steering.x = (steering.x / speed) * this.settings.maxSpeed;
                 steering.y = (steering.y / speed) * this.settings.maxSpeed;
@@ -92,7 +94,7 @@ export class Boid {
         const steering = { x: 0, y: 0 };
         let total = 0;
         for (const other of boids) {
-            if (other !== this) {
+            if (other !== this && other.isAlive) {
                 const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
                 if (distance < this.settings.visualRange) {
                     steering.x += other.position.x;
@@ -106,7 +108,7 @@ export class Boid {
             steering.y /= total;
             steering.x -= this.position.x;
             steering.y -= this.position.y;
-            const speed = Math.sqrt(steering.x * steering.x + steering.y * steering.y);
+            const speed = Math.hypot(steering.x, steering.y);
             if (speed > 0) {
                 steering.x = (steering.x / speed) * this.settings.maxSpeed;
                 steering.y = (steering.y / speed) * this.settings.maxSpeed;
