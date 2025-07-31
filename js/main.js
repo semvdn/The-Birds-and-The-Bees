@@ -4,7 +4,7 @@ import {
     BIRD_SETTINGS, BEE_SETTINGS, HIVE_SETTINGS, NEST_SETTINGS,
     MAX_BEES, MAX_BIRDS, MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH,
     BIRD_GENES, PARENT_PRESETS, MUTATION_RATE, MUTATION_AMOUNT,
-    BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE
+    BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE, GROUND_HEIGHT
 } from './presets.js';
 import { setupPlantData } from './lsystem.js';
 import { preRenderPlant, drawPlant } from './drawing.js';
@@ -122,7 +122,9 @@ function animate() {
 
     recalculateHomePositions();
 
-    const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid };
+    // Add groundHeight to the world object for boids to use
+    const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid, groundHeight: GROUND_HEIGHT };
+    
     const allPlants = [...trees, ...shrubs, ...weeds];
     allPlants.sort((a, b) => b.x - a.x);
 
@@ -197,8 +199,10 @@ function animate() {
         }
     }
 
-    const groundHeight = 30;
-    ctx.fillStyle = '#4a5742'; ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+    // Use the GROUND_HEIGHT constant to draw the ground
+    ctx.fillStyle = '#4a5742'; 
+    ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+
     if (isOverlayVisible) {
         for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE);
     }
@@ -261,7 +265,7 @@ function initialize() {
                 for (const key in BEE_DNA_TEMPLATE) newHome.dnaPool[key] = 0;
                 newHome.contributorCount = 0;
                 hives.push(newHome);
-                preRenderHive(newHome); // Pre-render the hive
+                preRenderHive(newHome);
             } else {
                 newHome.occupants = new Set(); newHome.hasEgg = false; newHome.hatchingCountdown = 0; newHome.nestingCountdown = 0; newHome.parentGenes = []; newHome.parentDna = [];
                 const nestRadius = 15; newHome.radius = nestRadius; newHome.twigs = [];
@@ -273,7 +277,7 @@ function initialize() {
                     newHome.twigs.push(twig);
                 }
                 nests.push(newHome);
-                preRenderNest(newHome); // Pre-render the nest
+                preRenderNest(newHome);
             }
             homesOnThisTree.push(newHome); isHive = !isHive;
         }

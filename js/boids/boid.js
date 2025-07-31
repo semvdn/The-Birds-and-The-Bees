@@ -9,7 +9,6 @@ export class Boid {
     update(world) {
         if (!this.isAlive) return;
 
-        // Use the appropriate spatial grid to get a small list of local neighbors
         const boidGrid = world.boids === world.birds ? world.birdGrid : world.beeGrid;
         const localBoids = boidGrid.query(this);
 
@@ -18,29 +17,19 @@ export class Boid {
         const coh = { x: 0, y: 0 };
         let sepCount = 0, aliCount = 0, cohCount = 0;
 
-        // --- Consolidated Steering Calculation ---
-        // Iterate once through local boids to calculate all forces.
         for (const other of localBoids) {
             if (other === this || !other.isAlive) continue;
-
             const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
-
-            // All three steering behaviors are based on visual range
             if (distance > 0 && distance < this.settings.visualRange) {
-                // Cohesion: Steer towards the center of mass of neighbors
                 coh.x += other.position.x;
                 coh.y += other.position.y;
                 cohCount++;
-
-                // Alignment: Steer in the same direction as neighbors
                 ali.x += other.velocity.x;
                 ali.y += other.velocity.y;
                 aliCount++;
-
-                // Separation: Steer away from very close neighbors
                 if (distance < this.settings.separationDistance) {
-                    const diffX = (this.position.x - other.position.x) / distance; // Normalize
-                    const diffY = (this.position.y - other.position.y) / distance; // Normalize
+                    const diffX = (this.position.x - other.position.x) / distance;
+                    const diffY = (this.position.y - other.position.y) / distance;
                     sep.x += diffX;
                     sep.y += diffY;
                     sepCount++;
@@ -48,7 +37,6 @@ export class Boid {
             }
         }
 
-        // Apply separation force
         if (sepCount > 0) {
             sep.x /= sepCount;
             sep.y /= sepCount;
@@ -56,7 +44,6 @@ export class Boid {
             this.velocity.y += sep.y * this.settings.separationFactor;
         }
 
-        // Apply alignment force
         if (aliCount > 0) {
             ali.x /= aliCount;
             ali.y /= aliCount;
@@ -67,7 +54,6 @@ export class Boid {
             }
         }
 
-        // Apply cohesion force
         if (cohCount > 0) {
             coh.x /= cohCount;
             coh.y /= cohCount;
@@ -81,7 +67,7 @@ export class Boid {
         }
         
         this.limitSpeed();
-        this.avoidEdges(world.canvas);
+        this.avoidEdges(world);
 
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
@@ -96,11 +82,37 @@ export class Boid {
         }
     }
 
-    avoidEdges(canvas) {
-        const margin = 50;
-        if (this.position.x < margin) this.velocity.x += this.settings.turnFactor;
-        if (this.position.x > canvas.width - margin) this.velocity.x -= this.settings.turnFactor;
-        if (this.position.y < margin) this.velocity.y += this.settings.turnFactor;
-        if (this.position.y > canvas.height - margin) this.velocity.y -= this.settings.turnFactor;
+    avoidEdges(world) {
+        const { canvas, groundHeight } = world;
+        const margin = 50; // Top margin
+
+        // --- Horizontal Wrap-Around ---
+        if (this.position.x > canvas.width) {
+            this.position.x = 0;
+        } else if (this.position.x < 0) {
+            this.position.x = canvas.width;
+        }
+
+        // --- Vertical Boundaries ---
+        // Top boundary repulsion
+        if (this.position.y < margin) {
+            this.velocity.y += this.settings.turnFactor;
+        }
+
+        // Ground boundary repulsion
+        const groundLevel = canvas.height - groundHeight;
+        const groundMargin = 70; // A larger margin for the ground to feel more significant
+        if (this.position.y > groundLevel - groundMargin) {
+            // Apply a stronger turning force as the boid gets closer to the ground
+            const distanceToRepelZone = this.position.y - (groundLevel - groundMargin);
+            const repulsionStrength = (distanceToRepelZone / groundMargin) * this.settings.turnFactor * 2.5;
+            this.velocity.y -= repulsionStrength;
+        }
+
+        // Hard clamp for the ground as a fail-safe, in case a boid has too much velocity
+        if (this.position.y >= groundLevel) {
+            this.position.y = groundLevel;
+            this.velocity.y *= -0.5; // Bounce with energy loss
+        }
     }
 }
