@@ -5,58 +5,67 @@ export class Bee extends Boid {
         super(x, y, { ...settings, ...dna });
         this.hive = hive;
         this.dna = dna;
-        this.state = 'SEEKING_FLOWER';
+        this.state = 'SEEKING_FLOWER'; // SEEKING_FLOWER, GATHERING_NECTAR, RETURN_TO_HIVE
         this.nectar = 0;
         this.targetFlower = null;
+        this.gatheringCountdown = 0;
     }
 
     update(world) {
-        // Pass the world and a specific list of boids (all bees) to the parent update method
         super.update({ ...world, boids: world.bees });
 
-        // Use the bird grid to find local predators to evade
         const localPredators = world.birdGrid.query(this);
         const evade = this.evade(localPredators);
         this.velocity.x += evade.x * this.settings.evadeFactor;
         this.velocity.y += evade.y * this.settings.evadeFactor;
 
-        if (this.state === 'SEEKING_FLOWER') {
-            this.seekFlower(world.flowers);
-            if (this.nectar >= this.settings.nectarCapacity) {
-                this.state = 'RETURN_TO_HIVE';
-                this.targetFlower = null;
-            }
-        } else if (this.state === 'RETURN_TO_HIVE') {
-            this.returnToHive();
+        switch (this.state) {
+            case 'SEEKING_FLOWER':
+                this.seekFlower(world.flowers);
+                break;
+            case 'GATHERING_NECTAR':
+                this.gatherNectar();
+                break;
+            case 'RETURN_TO_HIVE':
+                this.returnToHive();
+                break;
         }
     }
 
-    findClosest(entities) {
-        let closest = null;
-        let closestDist = Infinity;
-        for (const entity of entities) {
-            const dist = Math.hypot(this.position.x - entity.position.x, this.position.y - entity.position.y);
-            if (dist < closestDist && dist < this.settings.visualRange) {
-                closest = entity;
-                closestDist = dist;
+    findBestFlower(flowers) {
+        let bestFlower = null;
+        let bestScore = -1;
+
+        for (const flower of flowers) {
+            if (flower.nectar >= 1) {
+                const dist = Math.hypot(this.position.x - flower.position.x, this.position.y - flower.position.y);
+                if (dist < this.settings.visualRange) {
+                    // Score is nectar amount divided by distance squared (to heavily prioritize closer flowers)
+                    const score = flower.nectar / (dist * dist + 1);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestFlower = flower;
+                    }
+                }
             }
         }
-        return { closest, closestDist };
+        return bestFlower;
     }
 
     seekFlower(flowers) {
+        // Find a new target if the current one is gone or empty
         if (!this.targetFlower || this.targetFlower.nectar < 1) {
-            const validFlowers = flowers.filter(f => f.nectar >= 1);
-            const { closest } = this.findClosest(validFlowers);
-            this.targetFlower = closest;
+            this.targetFlower = this.findBestFlower(flowers);
         }
 
         if (this.targetFlower) {
             const dist = Math.hypot(this.position.x - this.targetFlower.position.x, this.position.y - this.targetFlower.position.y);
-            if (dist < 5) {
-                this.nectar++;
-                this.targetFlower.nectar--;
+            if (dist < 5) { // Arrived at flower
+                this.state = 'GATHERING_NECTAR';
+                this.gatheringCountdown = this.settings.gatherTime;
+                this.velocity = { x: 0, y: 0 }; // Stop moving while gathering
             } else {
+                // Steer towards the target flower
                 const steer = {
                     x: this.targetFlower.position.x - this.position.x,
                     y: this.targetFlower.position.y - this.position.y
@@ -67,9 +76,31 @@ export class Bee extends Boid {
         }
     }
 
+    gatherNectar() {
+        this.gatheringCountdown--;
+        if (this.gatheringCountdown <= 0) {
+            // Collect a bulk amount of nectar
+            const nectarToTake = Math.min(
+                this.targetFlower.nectar, // what the flower has
+                this.settings.nectarCapacity - this.nectar // how much space the bee has
+            );
+
+            this.nectar += nectarToTake;
+            this.targetFlower.nectar -= nectarToTake;
+            this.targetFlower = null; // Forget this flower
+
+            // Decide what to do next
+            if (this.nectar >= this.settings.nectarCapacity) {
+                this.state = 'RETURN_TO_HIVE';
+            } else {
+                this.state = 'SEEKING_FLOWER';
+            }
+        }
+    }
+
     returnToHive() {
         const dist = Math.hypot(this.position.x - this.hive.position.x, this.position.y - this.hive.position.y);
-        if (dist < 10) {
+        if (dist < 10) { // Arrived at hive
             this.hive.nectar += this.nectar;
             this.hive.contributorCount++;
             for (const key in this.dna) {
@@ -78,12 +109,13 @@ export class Bee extends Boid {
             this.nectar = 0;
             this.state = 'SEEKING_FLOWER';
         } else {
+            // Use the stronger returnFactor for a more urgent return
             const steer = {
                 x: this.hive.position.x - this.position.x,
                 y: this.hive.position.y - this.position.y
             };
-            this.velocity.x += steer.x * 0.002;
-            this.velocity.y += steer.y * 0.002;
+            this.velocity.x += steer.x * this.settings.returnFactor;
+            this.velocity.y += steer.y * this.settings.returnFactor;
         }
     }
 

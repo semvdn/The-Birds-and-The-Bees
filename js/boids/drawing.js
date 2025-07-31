@@ -46,7 +46,11 @@ export function drawBird(ctx, boid) {
     ctx.translate(boid.position.x, boid.position.y);
     const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
     ctx.rotate(angle);
-    ctx.scale(5, 5); // Make birds a bit larger for visibility
+
+    const isFacingRight = Math.abs(angle) < Math.PI / 2;
+    const scaleY = isFacingRight ? -5 : 5;
+    ctx.scale(5, scaleY);
+    
     drawBirdModel(ctx, boid);
     ctx.restore();
 }
@@ -83,12 +87,7 @@ export function preRenderHive(hive) {
     oCtx.beginPath(); oCtx.moveTo(-w * 0.9, -h * 0.05); oCtx.quadraticCurveTo(0, 0, w * 0.9, -h * 0.05); oCtx.stroke();
     oCtx.beginPath(); oCtx.moveTo(-w * 1.1, h * 0.3); oCtx.quadraticCurveTo(0, h * 0.45, w * 1.1, h * 0.3); oCtx.stroke();
     oCtx.beginPath(); oCtx.moveTo(-w * 0.7, h * 0.6); oCtx.quadraticCurveTo(0, h * 0.75, w * 0.7, h * 0.6); oCtx.stroke();
-    
-    oCtx.fillStyle = entranceColor; 
-    oCtx.beginPath(); 
-    // FIXED: Was 'ctx.arc', now correctly uses the offscreen context 'oCtx'
-    oCtx.arc(0, 12, 4, 0, Math.PI * 2); 
-    oCtx.fill();
+    oCtx.fillStyle = entranceColor; oCtx.beginPath(); oCtx.arc(0, 12, 4, 0, Math.PI * 2); oCtx.fill();
     
     oCtx.restore();
     hive.preRenderedCanvas = offscreenCanvas;
@@ -125,10 +124,11 @@ export function drawHive(ctx, hive) {
     ctx.restore();
 }
 
-export function drawHiveProgressBar(ctx, hive, nectarForNewBee) {
+// FIXED: This function no longer references HIVE_SETTINGS and relies on the nectarGoal parameter.
+export function drawHiveProgressBar(ctx, hive, nectarGoal) {
     const barWidth = 30, barHeight = 5, barX = hive.position.x - (barWidth / 2), barY = hive.position.y - 40;
     ctx.fillStyle = '#555555'; ctx.fillRect(barX, barY, barWidth, barHeight);
-    const progress = hive.nectar / nectarForNewBee;
+    const progress = hive.nectar / nectarGoal;
     const progressBarWidth = barWidth * Math.min(1, progress);
     ctx.fillStyle = '#00FF00'; ctx.fillRect(barX, barY, progressBarWidth, barHeight);
 }
@@ -137,7 +137,7 @@ export function drawNest(ctx, nest) {
     if (!nest.preRenderedCanvas) return;
     ctx.save();
     ctx.translate(nest.position.x, nest.position.y);
-    ctx.translate(0, -nest.radius * 1.5); // Offset for better visual placement
+    ctx.translate(0, -nest.radius * 1.5);
 
     ctx.drawImage(nest.preRenderedCanvas, -nest.preRenderedCanvas.width / 2, -nest.preRenderedCanvas.height / 2);
     

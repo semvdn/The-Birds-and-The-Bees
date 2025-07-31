@@ -5,7 +5,7 @@ export const GLOBAL_WIND_STRENGTH = 2.0;
 export const SHRUB_WIND_MULTIPLIER = 2.0;
 export const WEED_WIND_MULTIPLIER = 4.0;
 export const MAX_BEES = 150;
-export const MAX_BIRDS = 20;
+export const MAX_BIRDS = 30;
 export const MIN_HOME_SEPARATION = 40; // Minimum pixels between nests/hives on the same tree
 export const GROUND_HEIGHT = 30; // Define ground height for physics and drawing
 
@@ -26,8 +26,8 @@ export const TREE_PRESETS = [
 export const SHRUB_PRESETS = [
     { type: 'leafy', rules: { 'X': 'F-[[XL]+XL]+F[+FXL]-XL', 'F': 'FF' }, iterations: 4, angle: 30, initialThickness: 4, barkColor: '#4c956c', leafColor: '#fefee3', leafShape: 'oval' },
     { type: 'leafy', rules: { 'X': 'F[+XL][-XL]FXL', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#5fa8d3', leafColor: '#f2f2f2', leafShape: 'willow' },
-    { type: 'flower', nectar: 10, nectarRegen: 0.01, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
-    { type: 'flower', nectar: 15, nectarRegen: 0.015, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
+    { type: 'flower', nectar: 20, nectarRegen: 0.2, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
+    { type: 'flower', nectar: 25, nectarRegen: 0.25, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
 ];
 
 export const WEED_PRESETS = [
@@ -38,12 +38,17 @@ export const WEED_PRESETS = [
 ];
 
 // --- BOID SIMULATION CONSTANTS ---
-export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 10 };
+export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 5 };
 export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 2, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
 
 // --- BASE SETTINGS (NON-HERITABLE) ---
-export const BIRD_SETTINGS = { maxSpeed: 3, killRange: 5 };
-export const BEE_SETTINGS = { maxSpeed: 2.5, nectarCapacity: 5 };
+export const BIRD_SETTINGS = { maxSpeed: 1.75, killRange: 5 };
+export const BEE_SETTINGS = { 
+    maxSpeed: 1.65, 
+    nectarCapacity: 5,
+    gatherTime: 5, // Time in frames to gather nectar from a flower
+    returnFactor: 0.006, // Stronger steering force when returning to hive
+};
 
 // --- HERITABLE BIRD PARAMETERS ---
 export const BIRD_DNA_TEMPLATE = {
@@ -74,13 +79,11 @@ export const BIRD_GENES = {
         STANDARD: { name: 'STANDARD', vertices: [ [0,0], [0,0.5], [0,-0.5], [-1,2.5], [-3,1.5], [-4,0.7], [0,0], [-4.5,-0.3], [-3,-2.5], [-1,-1.5], [-2,-0.25], [-1.5,0.5] ]},
         CRACKER:  { name: 'CRACKER',  vertices: [ [0,0], [0,1.0], [0,-1.0], [-1,2.5], [-3,1.5], [-4,0.7], [0,0], [-4.5,-0.3], [-3,-2.5], [-1,-1.5], [-2,-0.25], [-1.5,1.0] ]}
     },
-    // Beaks are standardized to 4 vertices for interpolation
     BEAK_SHAPES: {
         PROBING:    { name: 'PROBING',    body: 'STANDARD', vertices: [ [4,0], [0,0.5], [0,0], [0,-0.5] ] },
         GENERALIST: { name: 'GENERALIST', body: 'STANDARD', vertices: [ [2,0], [0,0.5], [0,0], [0,-0.5] ] },
         CRACKER:    { name: 'CRACKER',    body: 'CRACKER',  vertices: [ [2.5,0], [0,1.0], [0,0], [0,-1.0] ] }
     },
-    // Tails are standardized to 5 vertices for interpolation
     TAIL_SHAPES: {
         FORKED:  { name: 'FORKED',  vertices: (v) => [ v[5], [-6,1.2], [-5.5,0], [-6,-0.8], v[7] ] },
         STUBBY:  { name: 'STUBBY',  vertices: (v) => [ v[5], [-5,0.8], [-5.5,0], [-5,-0.8], v[7] ] },

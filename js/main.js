@@ -122,7 +122,6 @@ function animate() {
 
     recalculateHomePositions();
 
-    // Add groundHeight to the world object for boids to use
     const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid, groundHeight: GROUND_HEIGHT };
     
     const allPlants = [...trees, ...shrubs, ...weeds];
@@ -144,24 +143,47 @@ function animate() {
     
     if (isOverlayVisible) updatePopulationDisplay();
     
+    // --- Bee Reproduction Logic (Updated) ---
     for (const hive of hives) {
-        if (hive.nectar >= HIVE_SETTINGS.NECTAR_FOR_NEW_BEE && bees.length < MAX_BEES) {
-            hive.nectar -= HIVE_SETTINGS.NECTAR_FOR_NEW_BEE;
-            const newBeeDna = {};
+        const costForTwoBees = HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2;
+        // Check if hive can afford two bees and if population cap allows for two more
+        if (hive.nectar >= costForTwoBees && bees.length < MAX_BEES - 1) {
+            hive.nectar -= costForTwoBees;
+
+            // Determine the base DNA from the hive's contributors
+            const baseBeeDna = {};
             if (hive.contributorCount > 0) {
                 for (const key in BEE_DNA_TEMPLATE) {
-                    const avgValue = hive.dnaPool[key] / hive.contributorCount;
-                    const template = BEE_DNA_TEMPLATE[key];
-                    newBeeDna[key] = mutate(avgValue, template.min, template.max);
+                    baseBeeDna[key] = hive.dnaPool[key] / hive.contributorCount;
                 }
-            } else {
+            } else { // Fallback to initial DNA if no bees have contributed yet
                 for (const key in BEE_DNA_TEMPLATE) {
-                    newBeeDna[key] = BEE_DNA_TEMPLATE[key].initial;
+                    baseBeeDna[key] = BEE_DNA_TEMPLATE[key].initial;
                 }
             }
-            bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive, newBeeDna));
+
+            // --- Create two bees (non-identical twins) ---
+            // Bee 1
+            const bee1Dna = {};
+            for (const key in baseBeeDna) {
+                const template = BEE_DNA_TEMPLATE[key];
+                bee1Dna[key] = mutate(baseBeeDna[key], template.min, template.max);
+            }
+            bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee1Dna));
+
+            // Bee 2
+            const bee2Dna = {};
+            for (const key in baseBeeDna) {
+                const template = BEE_DNA_TEMPLATE[key];
+                bee2Dna[key] = mutate(baseBeeDna[key], template.min, template.max);
+            }
+            bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee2Dna));
+
+            // Reset the gene pool for the next generation
             hive.contributorCount = 0;
-            for (const key in hive.dnaPool) hive.dnaPool[key] = 0;
+            for (const key in hive.dnaPool) {
+                hive.dnaPool[key] = 0;
+            }
         }
     }
 
@@ -199,12 +221,11 @@ function animate() {
         }
     }
 
-    // Use the GROUND_HEIGHT constant to draw the ground
     ctx.fillStyle = '#4a5742'; 
     ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
 
     if (isOverlayVisible) {
-        for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE);
+        for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2);
     }
     requestAnimationFrame(animate);
 }
