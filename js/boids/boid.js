@@ -1,3 +1,5 @@
+import { GRAVITY, DEATH_FADE_TIME } from '../presets.js';
+
 export class Boid {
     constructor(x, y, settings) {
         this.position = { x, y };
@@ -6,22 +8,81 @@ export class Boid {
         this.isAlive = true;
         this.age = 0;
         this.energy = this.settings.initialEnergy;
+        this.vanished = false; // A flag for permanent removal
+        this.deathTimer = 0; // Timer for the fade-out animation
     }
 
+    /**
+     * The main update loop for a boid. It manages lifecycle events.
+     * @param {object} world - The simulation world object.
+     * @returns {boolean} - Returns true if the boid is alive and active, false otherwise.
+     */
     update(world) {
-        if (!this.isAlive) return;
+        if (this.vanished) return false;
 
-        // --- Aging and Energy Depletion ---
-        this.age++;
-        this.energy -= this.settings.energyDepletionRate;
-        if (this.age > this.settings.maxLifetime || this.energy <= 0) {
-            this.isAlive = false;
-            return; // Cease updates for this boid
+        // --- Lifecycle Management ---
+        if (this.isAlive) {
+            this.age++;
+            this.energy -= this.settings.energyDepletionRate;
+            if (this.age > this.settings.maxLifetime || this.energy <= 0) {
+                this.die('natural'); // Dies from old age or starvation
+            }
         }
 
-        const boidGrid = world.boids === world.birds ? world.birdGrid : world.beeGrid;
-        const localBoids = boidGrid.query(this);
+        // If dead, the boid is no longer active but may still be animating (falling).
+        if (!this.isAlive) {
+            this.fall(world);
+            return false;
+        }
 
+        return true; // Boid is alive and should perform its regular behaviors.
+    }
+
+    /**
+     * Handles the boid's death, with different outcomes based on the cause.
+     * @param {string} cause - The cause of death ('natural', 'predation').
+     */
+    die(cause = 'natural') {
+        this.isAlive = false;
+        if (cause === 'predation') {
+            this.vanished = true; // Disappears immediately if eaten.
+        } else {
+            this.velocity.y = Math.min(0, this.velocity.y); // Ensures it doesn't jump up upon death.
+        }
+    }
+
+    /**
+     * Manages the physics of falling and the fade-out animation after death.
+     * @param {object} world - The simulation world object.
+     */
+    fall(world) {
+        const groundLevel = world.canvas.height - world.groundHeight;
+
+        // Apply gravity until it hits the ground.
+        if (this.position.y < groundLevel - 1) {
+             this.velocity.y += GRAVITY;
+             this.velocity.x *= 0.99; // Simulate air resistance.
+        } else {
+             // Once on the ground, stop moving and start the fade-out timer.
+             this.position.y = groundLevel;
+             this.velocity = {x: 0, y: 0};
+             this.deathTimer++;
+             if (this.deathTimer > DEATH_FADE_TIME) {
+                 this.vanished = true; // Mark for permanent removal after fading.
+             }
+        }
+        
+        this.position.x += this.velocity.x;
+        this.position.y += this.velocity.y;
+    }
+
+    /**
+     * Applies the standard boid flocking rules (separation, alignment, cohesion).
+     * This is called by subclasses for living boids.
+     * @param {object} world - The simulation world object.
+     * @param {Boid[]} localBoids - An array of nearby boids.
+     */
+    applyBoidRules(world, localBoids) {
         const sep = { x: 0, y: 0 };
         const ali = { x: 0, y: 0 };
         const coh = { x: 0, y: 0 };
@@ -96,33 +157,22 @@ export class Boid {
         const { canvas, groundHeight } = world;
         const margin = 50; // Top margin
 
-        // --- Horizontal Wrap-Around ---
-        if (this.position.x > canvas.width) {
-            this.position.x = 0;
-        } else if (this.position.x < 0) {
-            this.position.x = canvas.width;
-        }
+        if (this.position.x > canvas.width) this.position.x = 0;
+        else if (this.position.x < 0) this.position.x = canvas.width;
 
-        // --- Vertical Boundaries ---
-        // Top boundary repulsion
-        if (this.position.y < margin) {
-            this.velocity.y += this.settings.turnFactor;
-        }
-
-        // Ground boundary repulsion
+        if (this.position.y < margin) this.velocity.y += this.settings.turnFactor;
+        
         const groundLevel = canvas.height - groundHeight;
-        const groundMargin = 70; // A larger margin for the ground to feel more significant
+        const groundMargin = 70;
         if (this.position.y > groundLevel - groundMargin) {
-            // Apply a stronger turning force as the boid gets closer to the ground
             const distanceToRepelZone = this.position.y - (groundLevel - groundMargin);
             const repulsionStrength = (distanceToRepelZone / groundMargin) * this.settings.turnFactor * 2.5;
             this.velocity.y -= repulsionStrength;
         }
 
-        // Hard clamp for the ground as a fail-safe, in case a boid has too much velocity
         if (this.position.y >= groundLevel) {
             this.position.y = groundLevel;
-            this.velocity.y *= -0.5; // Bounce with energy loss
+            this.velocity.y *= -0.5;
         }
     }
 }

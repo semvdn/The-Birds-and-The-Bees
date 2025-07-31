@@ -14,10 +14,16 @@ export class Bird extends Boid {
     }
 
     update(world) {
-        // The base update handles aging, energy, and death checks
-        super.update({ ...world, boids: world.birds });
-        if (!this.isAlive) return;
+        // Run universal life/death/fall checks. If the boid is no longer active, stop.
+        if (!super.update(world)) {
+            return;
+        }
+        
+        // Apply standard boid movement rules (flocking, etc.)
+        const localBoids = world.birdGrid.query(this);
+        this.applyBoidRules(world, localBoids);
 
+        // Apply bird-specific behaviors
         switch (this.state) {
             case 'HUNTING':
                 const localPrey = world.beeGrid.query(this);
@@ -59,11 +65,10 @@ export class Bird extends Boid {
                 const effectiveKillRange = this.settings.killRange + (currentSpeed * 0.5);
 
                 if (distance < effectiveKillRange) {
-                    p.isAlive = false;
+                    p.die('predation'); // The bee is eaten and vanishes instantly.
                     this.beesCaught++;
-                    // Replenish energy for survival
                     this.energy = Math.min(this.settings.initialEnergy, this.energy + this.settings.energyFromBee);
-                    return;
+                    return; // Exit after a successful catch.
                 }
             }
         }

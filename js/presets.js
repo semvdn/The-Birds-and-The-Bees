@@ -5,16 +5,17 @@ export const GLOBAL_WIND_STRENGTH = 2.0;
 export const SHRUB_WIND_MULTIPLIER = 2.0;
 export const WEED_WIND_MULTIPLIER = 4.0;
 export const MAX_BEES = 150;
-export const MAX_BIRDS = 30;
+export const MAX_BIRDS = 40;
 export const MIN_HOME_SEPARATION = 40; // Minimum pixels between nests/hives on the same tree
 export const GROUND_HEIGHT = 30; // Define ground height for physics and drawing
-export const MIN_FLOWERS = 5; // Minimum number of flower-producing shrubs
-export const BEE_MAX_LIFETIME_SECONDS = 180; // A bee can live for up to a minute
-export const BIRD_MAX_LIFETIME_SECONDS = 240; // A bird can live for up to 3 minutes
-
+export const MIN_FLOWERS = 7; // Minimum number of flower-producing shrubs
+export const BEE_MAX_LIFETIME_SECONDS = 240; // A bee can live for up to a minute
+export const BIRD_MAX_LIFETIME_SECONDS = 360; // A bird can live for up to 3 minutes
+export const GRAVITY = 0.1; // Downward force on dead boids
+export const DEATH_FADE_TIME = 120; // 2 seconds to fade out on the ground
 
 // --- EVOLUTIONARY CONSTANTS ---
-export const MUTATION_RATE = 0.15; // 15% chance for each gene to mutate
+export const MUTATION_RATE = 0.05; // 15% chance for each gene to mutate
 export const MUTATION_AMOUNT = 0.05; // Mutate by up to 5% of the value's range
 
 // --- PRESET DEFINITIONS ---
@@ -30,7 +31,7 @@ export const TREE_PRESETS = [
 export const SHRUB_PRESETS = [
     { type: 'leafy', rules: { 'X': 'F-[[XL]+XL]+F[+FXL]-XL', 'F': 'FF' }, iterations: 4, angle: 30, initialThickness: 4, barkColor: '#4c956c', leafColor: '#fefee3', leafShape: 'oval' },
     { type: 'leafy', rules: { 'X': 'F[+XL][-XL]FXL', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#5fa8d3', leafColor: '#f2f2f2', leafShape: 'willow' },
-    { type: 'flower', nectar: 20, nectarRegen: 2, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
+    { type: 'flower', nectar: 20, nectarRegen: 2.0, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
     { type: 'flower', nectar: 25, nectarRegen: 2.5, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
 ];
 

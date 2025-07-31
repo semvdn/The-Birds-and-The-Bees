@@ -9,14 +9,20 @@ export class Bee extends Boid {
         this.nectar = 0;
         this.targetFlower = null;
         this.gatheringCountdown = 0;
-        this.lastVisitedFlower = null; // Remember the last flower for the waggle dance
+        this.lastVisitedFlower = null;
     }
 
     update(world) {
-        // The base update handles aging, energy, and death checks
-        super.update({ ...world, boids: world.bees });
-        if (!this.isAlive) return;
+        // Run universal life/death/fall checks. If not active, stop.
+        if (!super.update(world)) {
+            return;
+        }
 
+        // Apply standard boid movement rules (flocking, etc.)
+        const localBoids = world.beeGrid.query(this);
+        this.applyBoidRules(world, localBoids);
+
+        // Apply bee-specific behaviors
         const localPredators = world.birdGrid.query(this);
         const evade = this.evade(localPredators);
         this.velocity.x += evade.x * this.settings.evadeFactor;
@@ -57,7 +63,7 @@ export class Bee extends Boid {
     seekFlower(flowers) {
         if (!this.targetFlower && this.hive.knownFlowerLocations.length > 0) {
             const knownFlower = this.hive.knownFlowerLocations[Math.floor(Math.random() * this.hive.knownFlowerLocations.length)];
-            if (knownFlower && knownFlower.nectar >= 1) {
+            if (knownFlower && !knownFlower.vanished && knownFlower.nectar >= 1) {
                 this.targetFlower = knownFlower;
             }
         }
@@ -94,7 +100,6 @@ export class Bee extends Boid {
             this.nectar += nectarToTake;
             this.targetFlower.nectar -= nectarToTake;
 
-            // Replenish energy for survival
             this.energy = Math.min(this.settings.initialEnergy, this.energy + this.settings.energyFromNectar);
 
             this.lastVisitedFlower = this.targetFlower;

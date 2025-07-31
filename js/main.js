@@ -128,6 +128,7 @@ function animate() {
         }
     }
 
+    // Insert only living boids into the grids for interaction calculations.
     birdGrid.clear();
     for (const bird of birds) if (bird.isAlive) birdGrid.insert(bird);
     beeGrid.clear();
@@ -148,14 +149,23 @@ function animate() {
         }
     }
 
-    for (const bird of birds) if (bird.isAlive) { bird.update(world); drawBird(ctx, bird); }
-    for (const bee of bees) if (bee.isAlive) { bee.update(world); drawBee(ctx, bee); }
+    // Update and draw all boids, letting their internal state handle visuals.
+    for (const bird of birds) {
+        bird.update(world);
+        drawBird(ctx, bird);
+    }
+    for (const bee of bees) {
+        bee.update(world);
+        drawBee(ctx, bee);
+    }
     
-    bees = bees.filter(bee => bee.isAlive);
-    birds = birds.filter(bird => bird.isAlive);
+    // Filter out boids that have fully vanished.
+    bees = bees.filter(bee => !bee.vanished);
+    birds = birds.filter(bird => !bird.vanished);
     
     if (isOverlayVisible) updateOverlay();
     
+    // --- Bee Reproduction Logic ---
     for (const hive of hives) {
         const costForTwoBees = HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2;
         if (hive.nectar >= costForTwoBees && bees.length < MAX_BEES - 1) {
@@ -192,6 +202,7 @@ function animate() {
         }
     }
 
+    // --- Bird Reproduction Logic ---
     for (const nest of nests) {
         if (nest.occupants.size >= 2 && birds.length < MAX_BIRDS && !nest.hasEgg && nest.nestingCountdown <= 0) {
             nest.nestingCountdown = NEST_SETTINGS.NESTING_TIME_SECONDS * 60;
@@ -239,12 +250,14 @@ function updateOverlay() {
     beePopulationElement.textContent = `Bee Population: ${bees.length}`;
     birdPopulationElement.textContent = `Bird Population: ${birds.length}`;
 
+    // Update graphs at a slower interval to save performance
     if (frame % 120 === 0) {
-        const currentTime = frame / 60;
+        const currentTime = frame / 60; // Convert frames to seconds
         populationHistory.time.push(currentTime);
         populationHistory.bees.push(bees.length);
         populationHistory.birds.push(birds.length);
         
+        // Limit history to 100 points
         if (populationHistory.time.length > 100) {
             populationHistory.time.shift();
             populationHistory.bees.shift();
@@ -252,8 +265,8 @@ function updateOverlay() {
         }
 
         drawPopulationGraph();
-        drawTraitViolinPlots('bee-violin-plot', bees, BEE_DNA_TEMPLATE, 'Bee');
-        drawTraitViolinPlots('bird-violin-plot', birds, BIRD_DNA_TEMPLATE, 'Bird');
+        drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
+        drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
     }
 }
 
@@ -332,6 +345,7 @@ function drawTraitViolinPlots(elementId, population, template, titlePrefix) {
 
     Plotly.newPlot(elementId, plotData, layout, {responsive: true});
 }
+
 
 function getStaticBranchPosition(plant, branchPoint) {
     let x = plant.x, y = canvas.height, angle = -90 * (Math.PI / 180), length = plant.length * plant.scale;
