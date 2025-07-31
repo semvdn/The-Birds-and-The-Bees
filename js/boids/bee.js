@@ -13,7 +13,9 @@ export class Bee extends Boid {
     }
 
     update(world) {
+        // The base update handles aging, energy, and death checks
         super.update({ ...world, boids: world.bees });
+        if (!this.isAlive) return;
 
         const localPredators = world.birdGrid.query(this);
         const evade = this.evade(localPredators);
@@ -53,24 +55,20 @@ export class Bee extends Boid {
     }
 
     seekFlower(flowers) {
-        // If the bee has no target, try to get one from the hive's shared knowledge
         if (!this.targetFlower && this.hive.knownFlowerLocations.length > 0) {
-            // Pick a random known location to avoid all bees swarming the same flower
             const knownFlower = this.hive.knownFlowerLocations[Math.floor(Math.random() * this.hive.knownFlowerLocations.length)];
-            // Check if the known flower still exists and has nectar
             if (knownFlower && knownFlower.nectar >= 1) {
                 this.targetFlower = knownFlower;
             }
         }
         
-        // If there's still no target, or the target is empty, search locally
         if (!this.targetFlower || this.targetFlower.nectar < 1) {
             this.targetFlower = this.findBestFlower(flowers);
         }
 
         if (this.targetFlower) {
             const dist = Math.hypot(this.position.x - this.targetFlower.position.x, this.position.y - this.targetFlower.position.y);
-            if (dist < 5) { // Arrived at flower
+            if (dist < 5) {
                 this.state = 'GATHERING_NECTAR';
                 this.gatheringCountdown = this.settings.gatherTime;
                 this.velocity = { x: 0, y: 0 }; 
@@ -95,7 +93,11 @@ export class Bee extends Boid {
 
             this.nectar += nectarToTake;
             this.targetFlower.nectar -= nectarToTake;
-            this.lastVisitedFlower = this.targetFlower; // Remember this flower
+
+            // Replenish energy for survival
+            this.energy = Math.min(this.settings.initialEnergy, this.energy + this.settings.energyFromNectar);
+
+            this.lastVisitedFlower = this.targetFlower;
             this.targetFlower = null; 
 
             if (this.nectar >= this.settings.nectarCapacity) {
@@ -108,7 +110,7 @@ export class Bee extends Boid {
 
     returnToHive() {
         const dist = Math.hypot(this.position.x - this.hive.position.x, this.position.y - this.hive.position.y);
-        if (dist < 10) { // Arrived at hive
+        if (dist < 10) {
             this.hive.nectar += this.nectar;
             this.hive.contributorCount++;
             for (const key in this.dna) {
@@ -116,14 +118,11 @@ export class Bee extends Boid {
             }
             this.nectar = 0;
             
-            // **Waggle Dance**: Share the location of the last visited flower
             if (this.lastVisitedFlower && this.lastVisitedFlower.nectar > 0) {
-                // Add to hive's knowledge if not already there
                 if (!this.hive.knownFlowerLocations.includes(this.lastVisitedFlower)) {
                     this.hive.knownFlowerLocations.push(this.lastVisitedFlower);
-                    // Limit the size of the known locations to avoid old data
                     if (this.hive.knownFlowerLocations.length > 5) {
-                        this.hive.knownFlowerLocations.shift(); // Remove the oldest entry
+                        this.hive.knownFlowerLocations.shift();
                     }
                 }
             }

@@ -9,6 +9,9 @@ export const MAX_BIRDS = 30;
 export const MIN_HOME_SEPARATION = 40; // Minimum pixels between nests/hives on the same tree
 export const GROUND_HEIGHT = 30; // Define ground height for physics and drawing
 export const MIN_FLOWERS = 5; // Minimum number of flower-producing shrubs
+export const BEE_MAX_LIFETIME_SECONDS = 180; // A bee can live for up to a minute
+export const BIRD_MAX_LIFETIME_SECONDS = 240; // A bird can live for up to 3 minutes
+
 
 // --- EVOLUTIONARY CONSTANTS ---
 export const MUTATION_RATE = 0.15; // 15% chance for each gene to mutate
@@ -27,8 +30,8 @@ export const TREE_PRESETS = [
 export const SHRUB_PRESETS = [
     { type: 'leafy', rules: { 'X': 'F-[[XL]+XL]+F[+FXL]-XL', 'F': 'FF' }, iterations: 4, angle: 30, initialThickness: 4, barkColor: '#4c956c', leafColor: '#fefee3', leafShape: 'oval' },
     { type: 'leafy', rules: { 'X': 'F[+XL][-XL]FXL', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#5fa8d3', leafColor: '#f2f2f2', leafShape: 'willow' },
-    { type: 'flower', nectar: 20, nectarRegen: 0.2, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
-    { type: 'flower', nectar: 25, nectarRegen: 0.25, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
+    { type: 'flower', nectar: 20, nectarRegen: 2, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
+    { type: 'flower', nectar: 25, nectarRegen: 2.5, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
 ];
 
 export const WEED_PRESETS = [
@@ -43,12 +46,23 @@ export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 5 };
 export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 2, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
 
 // --- BASE SETTINGS (NON-HERITABLE) ---
-export const BIRD_SETTINGS = { maxSpeed: 1.75, killRange: 5 };
+export const BIRD_SETTINGS = { 
+    maxSpeed: 1.75, 
+    killRange: 5,
+    maxLifetime: BIRD_MAX_LIFETIME_SECONDS * 60, // in frames
+    initialEnergy: 200,
+    energyFromBee: 150, // Energy gained per bee caught
+    energyDepletionRate: 0.04, // Energy lost per frame
+};
 export const BEE_SETTINGS = { 
     maxSpeed: 1.65, 
     nectarCapacity: 5,
     gatherTime: 5, // Time in frames to gather nectar from a flower
     returnFactor: 0.006, // Stronger steering force when returning to hive
+    maxLifetime: BEE_MAX_LIFETIME_SECONDS * 60, // in frames
+    initialEnergy: 100,
+    energyFromNectar: 50, // Energy gained per gathering action
+    energyDepletionRate: 0.01, // Energy lost per frame
 };
 
 // --- HERITABLE BIRD PARAMETERS ---

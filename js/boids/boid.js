@@ -4,10 +4,20 @@ export class Boid {
         this.velocity = { x: Math.random() * 2 - 1, y: Math.random() * 2 - 1 };
         this.settings = settings;
         this.isAlive = true;
+        this.age = 0;
+        this.energy = this.settings.initialEnergy;
     }
 
     update(world) {
         if (!this.isAlive) return;
+
+        // --- Aging and Energy Depletion ---
+        this.age++;
+        this.energy -= this.settings.energyDepletionRate;
+        if (this.age > this.settings.maxLifetime || this.energy <= 0) {
+            this.isAlive = false;
+            return; // Cease updates for this boid
+        }
 
         const boidGrid = world.boids === world.birds ? world.birdGrid : world.beeGrid;
         const localBoids = boidGrid.query(this);
