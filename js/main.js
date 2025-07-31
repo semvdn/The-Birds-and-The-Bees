@@ -22,17 +22,55 @@ let birds = [], bees = [];
 let hives = [], nests = [];
 let frame = 0;
 
+function blendHexColors(hex1, hex2) {
+    const num1 = parseInt(hex1.slice(1), 16), num2 = parseInt(hex2.slice(1), 16);
+    const r1 = (num1 >> 16) & 0xFF, g1 = (num1 >> 8) & 0xFF, b1 = num1 & 0xFF;
+    const r2 = (num2 >> 16) & 0xFF, g2 = (num2 >> 8) & 0xFF, b2 = num2 & 0xFF;
+    const avgR = Math.floor((r1 + r2) / 2), avgG = Math.floor((g1 + g2) / 2), avgB = Math.floor((b1 + b2) / 2);
+    const newHex = ((avgR << 16) | (avgG << 8) | avgB).toString(16).padStart(6, '0');
+    return `#${newHex}`;
+}
+
+function interpolateVertices(v1, v2, weight) {
+    return v1.map((p1, i) => {
+        const p2 = v2[i];
+        const newX = (1 - weight) * p1[0] + weight * p2[0];
+        const newY = (1 - weight) * p1[1] + weight * p2[1];
+        return [newX, newY];
+    });
+}
+
 function determineInheritance(genes1, genes2) {
-    // Beak Inheritance (Dominance)
-    const beak = genes1.beak.dominance >= genes2.beak.dominance ? genes1.beak : genes2.beak;
+    // A random weight decides how much influence parent 2 has over parent 1.
+    // 0.0 = pure parent 1, 1.0 = pure parent 2.
+    // We keep it away from the extremes to ensure a blend.
+    const weight = Math.random() * 0.6 + 0.2;
 
-    // Tail Inheritance (Dominance)
-    const tail = genes1.tail.dominance >= genes2.tail.dominance ? genes1.tail : genes2.tail;
+    // --- Shape Interpolation ---
+    const newBodyVertices = interpolateVertices(genes1.bodyVertices, genes2.bodyVertices, weight);
+    const newBeakVertices = interpolateVertices(genes1.beakVertices, genes2.beakVertices, weight);
+    const newTailVertices = interpolateVertices(genes1.tailVertices, genes2.tailVertices, weight);
 
-    // Color Palette Inheritance (Co-dominance - 50/50 chance from either parent)
-    const palette = Math.random() < 0.5 ? genes1.palette : genes2.palette;
-    
-    return { beak, tail, palette };
+    // --- Color Blending ---
+    const palette1 = genes1.palette.colors, palette2 = genes2.palette.colors;
+    const newPaletteColors = {};
+    for (const key in palette1) {
+        // Don't blend the outline or beak color, keep them dark for contrast
+        newPaletteColors[key] = (key === 'outline' || key === 'beak') ? palette1[key] : blendHexColors(palette1[key], palette2[key]);
+    }
+    const newPalette = { name: "Hybrid", colors: newPaletteColors };
+
+    return {
+        palette: newPalette,
+        bodyVertices: newBodyVertices,
+        beakVertices: newBeakVertices,
+        tailVertices: newTailVertices,
+        // Carry the original base genes forward for the next generation's inheritance calculation
+        baseGenes: {
+            baseBeak: Math.random() < 0.5 ? genes1.baseGenes.baseBeak : genes2.baseGenes.baseBeak,
+            baseTail: Math.random() < 0.5 ? genes1.baseGenes.baseTail : genes2.baseGenes.baseTail,
+        }
+    };
 }
 
 
@@ -99,10 +137,8 @@ function animate() {
             if (nest.nestingCountdown <= 0) {
                 nest.hasEgg = true;
                 nest.hatchingCountdown = NEST_SETTINGS.HATCH_TIME_SECONDS * 60;
-                
                 const matingPair = Array.from(nest.occupants);
-                nest.parentGenes = [matingPair[0].genes, matingPair[1].genes]; // Store genes for inheritance
-                
+                nest.parentGenes = [matingPair[0].genes, matingPair[1].genes];
                 for (const parent of matingPair) parent.resetMating();
                 nest.occupants.clear();
             }
@@ -220,7 +256,18 @@ function initialize() {
         for (let i = 0; i < 10; i++) {
             const nest = nests[i % nests.length];
             const parentPreset = PARENT_PRESETS[i % PARENT_PRESETS.length];
-            birds.push(new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, parentPreset.genes));
+            const bodyVertices = BIRD_GENES.BODY_SHAPES[parentPreset.genes.baseBeak.body].vertices;
+            
+            // Convert preset into the final gene structure that the bird object expects
+            const birdGenes = {
+                palette: parentPreset.genes.palette,
+                bodyVertices: bodyVertices,
+                beakVertices: parentPreset.genes.baseBeak.vertices,
+                tailVertices: parentPreset.genes.baseTail.vertices(bodyVertices),
+                // Store the original preset genes for the first round of inheritance
+                baseGenes: parentPreset.genes
+            };
+            birds.push(new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, birdGenes));
         }
     }
     if (hives.length > 0) {

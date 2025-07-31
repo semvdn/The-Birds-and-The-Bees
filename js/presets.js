@@ -35,33 +35,26 @@ export const WEED_PRESETS = [
 // --- BOID SIMULATION CONSTANTS ---
 export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 10 };
 export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 2, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
+export const BIRD_SETTINGS = { maxSpeed: 3, visualRange: 150, separationDistance: 25, separationFactor: 0.05, alignmentFactor: 0.05, cohesionFactor: 0.005, turnFactor: 0.2, huntFactor: 0.002, killRange: 5 };
+export const BEE_SETTINGS = { maxSpeed: 2.5, visualRange: 70, separationDistance: 20, separationFactor: 0.05, alignmentFactor: 0.03, cohesionFactor: 0.002, turnFactor: 0.3, evadeFactor: 0.01, nectarCapacity: 5 };
 
-export const BIRD_SETTINGS = {
-    maxSpeed: 3, visualRange: 150, separationDistance: 25, separationFactor: 0.05,
-    alignmentFactor: 0.05, cohesionFactor: 0.005, turnFactor: 0.2, huntFactor: 0.002, killRange: 5
-};
-
-export const BEE_SETTINGS = {
-    maxSpeed: 2.5, visualRange: 70, separationDistance: 20, separationFactor: 0.05,
-    alignmentFactor: 0.03, cohesionFactor: 0.002, turnFactor: 0.3, evadeFactor: 0.01, nectarCapacity: 5
-};
-
-// --- BIRD GENETIC PRESETS ---
+// --- BIRD GENETIC PRESETS (REWORKED FOR INTERPOLATION) ---
 export const BIRD_GENES = {
     BODY_SHAPES: {
         STANDARD: { name: 'STANDARD', vertices: [ [0,0], [0,0.5], [0,-0.5], [-1,2.5], [-3,1.5], [-4,0.7], [0,0], [-4.5,-0.3], [-3,-2.5], [-1,-1.5], [-2,-0.25], [-1.5,0.5] ]},
         CRACKER:  { name: 'CRACKER',  vertices: [ [0,0], [0,1.0], [0,-1.0], [-1,2.5], [-3,1.5], [-4,0.7], [0,0], [-4.5,-0.3], [-3,-2.5], [-1,-1.5], [-2,-0.25], [-1.5,1.0] ]}
     },
+    // Beaks are standardized to 4 vertices for interpolation
     BEAK_SHAPES: {
-        PROBING:    { name: 'PROBING',    dominance: 3, body: 'STANDARD', vertices: (v) => [ [4,0], v[1], v[2] ] },
-        GENERALIST: { name: 'GENERALIST', dominance: 2, body: 'STANDARD', vertices: (v) => [ [2,0], v[1], v[2] ] },
-        CRACKER:    { name: 'CRACKER',    dominance: 1, body: 'CRACKER',  vertices: (v) => [ [2.5,0], v[1], v[2] ] }
+        PROBING:    { name: 'PROBING',    body: 'STANDARD', vertices: [ [4,0], [0,0.5], [0,0], [0,-0.5] ] },
+        GENERALIST: { name: 'GENERALIST', body: 'STANDARD', vertices: [ [2,0], [0,0.5], [0,0], [0,-0.5] ] },
+        CRACKER:    { name: 'CRACKER',    body: 'CRACKER',  vertices: [ [2.5,0], [0,1.0], [0,0], [0,-1.0] ] }
     },
+    // Tails are standardized to 5 vertices for interpolation
     TAIL_SHAPES: {
-        FORKED:  { name: 'FORKED',  dominance: 3, vertices: (v) => [ v[5], [-6,1.2], [-5.5,0], [-6,-0.8], v[7] ] },
-        FAN:     { name: 'FAN',     dominance: 2, vertices: (v) => [ v[5], [-5.5,0.8], [-6,0], [-5.5,-0.8], v[7] ] },
-        NOTCHED: { name: 'NOTCHED', dominance: 2, vertices: (v) => [ v[5], [-6,0.5], [-5.5,0], [-6,-0.5], v[7] ] },
-        STUBBY:  { name: 'STUBBY',  dominance: 1, vertices: (v) => [ v[5], [-5,0.5], [-5,-0.5], v[7] ] }
+        FORKED:  { name: 'FORKED',  vertices: (v) => [ v[5], [-6,1.2], [-5.5,0], [-6,-0.8], v[7] ] },
+        STUBBY:  { name: 'STUBBY',  vertices: (v) => [ v[5], [-5,0.8], [-5.5,0], [-5,-0.8], v[7] ] },
+        NOTCHED: { name: 'NOTCHED', vertices: (v) => [ v[5], [-6,0.5], [-5.5,0], [-6,-0.5], v[7] ] }
     },
     PALETTES: {
         CLASSIC: { name: 'CLASSIC', colors: { "beak": "#2F2F2F", "head_crest": "#0096FF", "head_face": "#72A0C1", "neck_white": "#FFFFFF", "wing_top": "#0077BE", "wing_bottom": "#005B96", "tail": "#004777", "belly_top": "#FFB347", "belly_bottom": "#FFD700", "outline": "black" }},
@@ -70,9 +63,8 @@ export const BIRD_GENES = {
     }
 };
 
-// --- PARENT BIRD PRESETS FOR INITIALIZATION ---
 export const PARENT_PRESETS = [
-    { name: "Kingfisher", genes: { beak: BIRD_GENES.BEAK_SHAPES.PROBING, tail: BIRD_GENES.TAIL_SHAPES.FORKED, palette: BIRD_GENES.PALETTES.CLASSIC }},
-    { name: "Ground Finch", genes: { beak: BIRD_GENES.BEAK_SHAPES.CRACKER, tail: BIRD_GENES.TAIL_SHAPES.STUBBY, palette: BIRD_GENES.PALETTES.EARTHY }},
-    { name: "Starling", genes: { beak: BIRD_GENES.BEAK_SHAPES.GENERALIST, tail: BIRD_GENES.TAIL_SHAPES.NOTCHED, palette: BIRD_GENES.PALETTES.VIOLET }}
+    { name: "Kingfisher", genes: { baseBeak: BIRD_GENES.BEAK_SHAPES.PROBING, baseTail: BIRD_GENES.TAIL_SHAPES.FORKED, palette: BIRD_GENES.PALETTES.CLASSIC }},
+    { name: "Ground Finch", genes: { baseBeak: BIRD_GENES.BEAK_SHAPES.CRACKER, baseTail: BIRD_GENES.TAIL_SHAPES.STUBBY, palette: BIRD_GENES.PALETTES.EARTHY }},
+    { name: "Starling", genes: { baseBeak: BIRD_GENES.BEAK_SHAPES.GENERALIST, baseTail: BIRD_GENES.TAIL_SHAPES.NOTCHED, palette: BIRD_GENES.PALETTES.VIOLET }}
 ];

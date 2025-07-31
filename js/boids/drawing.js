@@ -1,67 +1,44 @@
-import { BIRD_GENES } from '../presets.js';
-
-function drawBirdModel(ctx, boid) {
-    const genes = boid.genes;
-
-    // --- FIX 1: Robust Palette Lookup ---
-    // Instead of assuming the entire 'colors' object is passed correctly, we re-lookup the palette
-    // from the master list using the palette's name. This prevents silent errors.
-    const paletteObject = BIRD_GENES.PALETTES[genes.palette.name];
-    if (!paletteObject) {
-        console.error("Could not find palette for name:", genes.palette.name);
-        return; // Don't draw the bird if its palette is missing
-    }
-    let palette = { ...paletteObject.colors };
-
-    // Modify palette for specific states, e.g., seeking a mate
+export function drawBirdModel(ctx, boid) {
+    // The bird's genes now contain the final vertex arrays, ready for drawing.
+    const { bodyVertices, beakVertices, tailVertices, palette } = boid.genes;
+    
+    // Create a mutable copy of the palette for display modifications
+    let displayPalette = { ...palette.colors };
     if (boid.state === 'SEEKING_MATE') {
-        palette.neck_white = '#87CEFA'; // Light sky blue to show readiness to mate
+        // Change a visible color to indicate readiness to mate
+        displayPalette.neck_white = '#87CEFA'; // Light Sky Blue
     }
 
-    // Get the vertex data based on the bird's genes
-    const bodyShape = BIRD_GENES.BODY_SHAPES[genes.beak.body];
-    const v_body = bodyShape.vertices;
-    const v_beak = genes.beak.vertices(v_body);
-    const v_tail = genes.tail.vertices(v_body);
-
-    // Body Polygon Definitions (indices refer to v_body)
+    // Define the polygons using the pre-calculated vertex data
     const polygons = {
-        head_crest:   new Path2D(), wing_top:     new Path2D(),
-        head_face:    new Path2D(), wing_bottom:  new Path2D(),
-        neck_white:   new Path2D(), belly_top:    new Path2D(),
-        tail:         new Path2D(), belly_bottom: new Path2D(),
-        beak:         new Path2D(),
+        head_crest:   [bodyVertices[1], bodyVertices[3], bodyVertices[4], bodyVertices[11]],
+        head_face:    [bodyVertices[1], bodyVertices[11], bodyVertices[2]],
+        neck_white:   [bodyVertices[2], bodyVertices[11], bodyVertices[10], bodyVertices[9]],
+        wing_top:     [bodyVertices[4], bodyVertices[5], bodyVertices[10], bodyVertices[11]],
+        wing_bottom:  [bodyVertices[5], bodyVertices[7], bodyVertices[10]],
+        belly_top:    [bodyVertices[2], bodyVertices[9], bodyVertices[8], bodyVertices[10]],
+        belly_bottom: [bodyVertices[7], bodyVertices[8], bodyVertices[10]],
+        beak:         beakVertices,
+        tail:         tailVertices,
     };
-
-    // Construct polygon paths from vertices
-    polygons.head_crest.moveTo(v_body[1][0], v_body[1][1]); polygons.head_crest.lineTo(v_body[3][0], v_body[3][1]); polygons.head_crest.lineTo(v_body[4][0], v_body[4][1]); polygons.head_crest.lineTo(v_body[11][0], v_body[11][1]); polygons.head_crest.closePath();
-    polygons.head_face.moveTo(v_body[1][0], v_body[1][1]); polygons.head_face.lineTo(v_body[11][0], v_body[11][1]); polygons.head_face.lineTo(v_body[2][0], v_body[2][1]); polygons.head_face.closePath();
-    polygons.neck_white.moveTo(v_body[2][0], v_body[2][1]); polygons.neck_white.lineTo(v_body[11][0], v_body[11][1]); polygons.neck_white.lineTo(v_body[10][0], v_body[10][1]); polygons.neck_white.lineTo(v_body[9][0], v_body[9][1]); polygons.neck_white.closePath();
-    polygons.wing_top.moveTo(v_body[4][0], v_body[4][1]); polygons.wing_top.lineTo(v_body[5][0], v_body[5][1]); polygons.wing_top.lineTo(v_body[10][0], v_body[10][1]); polygons.wing_top.lineTo(v_body[11][0], v_body[11][1]); polygons.wing_top.closePath();
-    polygons.wing_bottom.moveTo(v_body[5][0], v_body[5][1]); polygons.wing_bottom.lineTo(v_body[7][0], v_body[7][1]); polygons.wing_bottom.lineTo(v_body[10][0], v_body[10][1]); polygons.wing_bottom.closePath();
-    polygons.belly_top.moveTo(v_body[2][0], v_body[2][1]); polygons.belly_top.lineTo(v_body[9][0], v_body[9][1]); polygons.belly_top.lineTo(v_body[8][0], v_body[8][1]); polygons.belly_top.lineTo(v_body[10][0], v_body[10][1]); polygons.belly_top.closePath();
-    polygons.belly_bottom.moveTo(v_body[7][0], v_body[7][1]); polygons.belly_bottom.lineTo(v_body[8][0], v_body[8][1]); polygons.belly_bottom.lineTo(v_body[10][0], v_body[10][1]); polygons.belly_bottom.closePath();
     
-    // Beak and Tail are constructed from their own vertex sets
-    polygons.beak.moveTo(v_beak[0][0], v_beak[0][1]); for (let i = 1; i < v_beak.length; i++) polygons.beak.lineTo(v_beak[i][0], v_beak[i][1]); polygons.beak.closePath();
-    polygons.tail.moveTo(v_tail[0][0], v_tail[0][1]); for (let i = 1; i < v_tail.length; i++) polygons.tail.lineTo(v_tail[i][0], v_tail[i][1]); polygons.tail.closePath();
-    
-    // Render the polygons with their correct colors
     ctx.lineWidth = 0.1;
-    ctx.strokeStyle = palette.outline;
-
+    // Render each part of the bird
     for (const part in polygons) {
-        // --- FIX 2: Explicit Color Assignment ---
-        // We explicitly look up the color for each part. If a color is missing from the palette
-        // for some reason, we'll fall back to the beak color, and finally to black.
-        const color = palette[part];
-        ctx.fillStyle = color || palette.beak || '#000000';
+        const vertices = polygons[part];
+        ctx.fillStyle = displayPalette[part] || displayPalette.beak; // Use part's color, fallback for tail
+        ctx.strokeStyle = displayPalette.outline;
         
-        ctx.fill(polygons[part]);
-        ctx.stroke(polygons[part]);
+        ctx.beginPath();
+        ctx.moveTo(vertices[0][0], vertices[0][1]);
+        for (let i = 1; i < vertices.length; i++) {
+            ctx.lineTo(vertices[i][0], vertices[i][1]);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
     }
 }
-
 
 export function drawBird(ctx, boid) {
     if (!boid.isAlive) return;
@@ -69,15 +46,10 @@ export function drawBird(ctx, boid) {
     ctx.translate(boid.position.x, boid.position.y);
     const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
     ctx.rotate(angle);
-    
-    // --- FIX 3: Increased Bird Size ---
-    ctx.scale(4, 4); // Birds are now larger and more visible
-    
+    ctx.scale(5, 5); // Make birds a bit larger for visibility
     drawBirdModel(ctx, boid);
-
     ctx.restore();
 }
-
 
 export function drawBee(ctx, boid) {
     if (!boid.isAlive) return;
@@ -85,14 +57,8 @@ export function drawBee(ctx, boid) {
     ctx.translate(boid.position.x, boid.position.y);
     const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
     ctx.rotate(angle);
-    // Body
-    ctx.fillStyle = '#FFC300'; // Yellow
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Stripe
-    ctx.fillStyle = '#000000'; // Black
-    ctx.fillRect(-2, -3, 2, 6);
+    ctx.fillStyle = '#FFC300'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000000'; ctx.fillRect(-2, -3, 2, 6);
     ctx.restore();
 }
 
