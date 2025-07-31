@@ -29,6 +29,13 @@ let frame = 0;
 let birdGrid, beeGrid;
 let isOverlayVisible = false;
 
+// --- Data for Graphs ---
+let populationHistory = {
+    time: [],
+    bees: [],
+    birds: []
+};
+
 function mutate(value, min, max) {
     if (Math.random() < MUTATION_RATE) {
         const range = max - min;
@@ -115,8 +122,7 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame++;
 
-    // Periodically clear the hive's memory of flower locations to ensure information stays fresh
-    if (frame % 300 === 0) { // Every 5 seconds (assuming 60fps)
+    if (frame % 300 === 0) { 
         for (const hive of hives) {
             hive.knownFlowerLocations.length = 0;
         }
@@ -148,29 +154,23 @@ function animate() {
     bees = bees.filter(bee => bee.isAlive);
     birds = birds.filter(bird => bird.isAlive);
     
-    if (isOverlayVisible) updatePopulationDisplay();
+    if (isOverlayVisible) updateOverlay();
     
-    // --- Bee Reproduction Logic (Updated) ---
     for (const hive of hives) {
         const costForTwoBees = HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2;
-        // Check if hive can afford two bees and if population cap allows for two more
         if (hive.nectar >= costForTwoBees && bees.length < MAX_BEES - 1) {
             hive.nectar -= costForTwoBees;
-
-            // Determine the base DNA from the hive's contributors
             const baseBeeDna = {};
             if (hive.contributorCount > 0) {
                 for (const key in BEE_DNA_TEMPLATE) {
                     baseBeeDna[key] = hive.dnaPool[key] / hive.contributorCount;
                 }
-            } else { // Fallback to initial DNA if no bees have contributed yet
+            } else { 
                 for (const key in BEE_DNA_TEMPLATE) {
                     baseBeeDna[key] = BEE_DNA_TEMPLATE[key].initial;
                 }
             }
 
-            // --- Create two bees (non-identical twins) ---
-            // Bee 1
             const bee1Dna = {};
             for (const key in baseBeeDna) {
                 const template = BEE_DNA_TEMPLATE[key];
@@ -178,7 +178,6 @@ function animate() {
             }
             bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee1Dna));
 
-            // Bee 2
             const bee2Dna = {};
             for (const key in baseBeeDna) {
                 const template = BEE_DNA_TEMPLATE[key];
@@ -186,7 +185,6 @@ function animate() {
             }
             bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee2Dna));
 
-            // Reset the gene pool for the next generation
             hive.contributorCount = 0;
             for (const key in hive.dnaPool) {
                 hive.dnaPool[key] = 0;
@@ -237,9 +235,102 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-function updatePopulationDisplay() {
+function updateOverlay() {
     beePopulationElement.textContent = `Bee Population: ${bees.length}`;
     birdPopulationElement.textContent = `Bird Population: ${birds.length}`;
+
+    if (frame % 120 === 0) {
+        const currentTime = frame / 60;
+        populationHistory.time.push(currentTime);
+        populationHistory.bees.push(bees.length);
+        populationHistory.birds.push(birds.length);
+        
+        if (populationHistory.time.length > 100) {
+            populationHistory.time.shift();
+            populationHistory.bees.shift();
+            populationHistory.birds.shift();
+        }
+
+        drawPopulationGraph();
+        drawTraitViolinPlots('bee-violin-plot', bees, BEE_DNA_TEMPLATE, 'Bee');
+        drawTraitViolinPlots('bird-violin-plot', birds, BIRD_DNA_TEMPLATE, 'Bird');
+    }
+}
+
+function drawPopulationGraph() {
+    const beeTrace = {
+        x: populationHistory.time,
+        y: populationHistory.bees,
+        mode: 'lines',
+        name: 'Bees',
+        line: { color: '#FFC300' }
+    };
+    const birdTrace = {
+        x: populationHistory.time,
+        y: populationHistory.birds,
+        mode: 'lines',
+        name: 'Birds',
+        line: { color: '#87CEFA' }
+    };
+    const layout = {
+        title: 'Population Over Time',
+        xaxis: { title: 'Time (s)', gridcolor: '#444' },
+        yaxis: { title: 'Population', gridcolor: '#444' },
+        margin: { t: 30, l: 40, r: 20, b: 30 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0.2)',
+        font: { color: 'white' },
+        legend: { x: 0.1, y: 0.9 }
+    };
+    Plotly.newPlot('population-graph', [beeTrace, birdTrace], layout, {responsive: true});
+}
+
+function drawTraitViolinPlots(elementId, population, template, titlePrefix) {
+    if (population.length < 2) {
+        document.getElementById(elementId).innerHTML = `<p style="padding: 10px;">Not enough data for ${titlePrefix.toLowerCase()} trait plots.</p>`;
+        return;
+    }
+
+    const traits = ['visualRange', 'separationFactor', 'alignmentFactor', 'cohesionFactor'];
+    const plotData = [];
+    const layout = {
+        title: `${titlePrefix} Trait Distribution`,
+        height: traits.length * 150, // Allocate height for each subplot
+        margin: { t: 40, l: 60, r: 20, b: 20 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0.2)',
+        font: { color: 'white' },
+        showlegend: false,
+        grid: {
+            rows: traits.length,
+            columns: 1,
+            pattern: 'independent'
+        }
+    };
+
+    traits.forEach((trait, i) => {
+        plotData.push({
+            x: population.map(p => p.dna[trait]), // Use x-axis for horizontal violins
+            name: trait.replace('Factor', ''),
+            type: 'violin',
+            box: { visible: true },
+            meanline: { visible: true },
+            xaxis: `x${i + 1}`,
+            yaxis: `y${i + 1}`
+        });
+
+        const { min, max } = template[trait];
+        layout[`xaxis${i + 1}`] = {
+            title: trait,
+            range: [min, max],
+            gridcolor: '#444'
+        };
+        layout[`yaxis${i + 1}`] = {
+             showticklabels: false
+        };
+    });
+
+    Plotly.newPlot(elementId, plotData, layout, {responsive: true});
 }
 
 function getStaticBranchPosition(plant, branchPoint) {
@@ -292,7 +383,7 @@ function initialize() {
                 newHome.dnaPool = {};
                 for (const key in BEE_DNA_TEMPLATE) newHome.dnaPool[key] = 0;
                 newHome.contributorCount = 0;
-                newHome.knownFlowerLocations = []; // <-- ADDED: For waggle dance
+                newHome.knownFlowerLocations = []; 
                 hives.push(newHome);
                 preRenderHive(newHome);
             } else {
@@ -378,7 +469,7 @@ window.addEventListener('keydown', (event) => {
         overlay.classList.toggle('overlay-hidden');
         isOverlayVisible = !overlay.classList.contains('overlay-hidden');
         if (isOverlayVisible) {
-            updatePopulationDisplay();
+            updateOverlay();
         }
     }
 });

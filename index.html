@@ -4,13 +4,79 @@
     <title>Organic L-System Forest</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/overlay.css">
+    <!-- Include Plotly.js for charting -->
+    <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
 </head>
 <body>
     <canvas id="treeCanvas"></canvas>
     <div id="overlay" class="overlay-hidden">
-        <p id="bee-population">Bee Population: 0</p>
-        <p id="bird-population">Bird Population: 0</p>
+        <details>
+            <summary>Population Stats</summary>
+            <p id="bee-population">Bee Population: 0</p>
+            <p id="bird-population">Bird Population: 0</p>
+        </details>
+        <details>
+            <summary>Population Over Time</summary>
+            <div id="population-graph"></div>
+        </details>
+        <details>
+            <summary>Bee Trait Distribution</summary>
+            <div id="bee-violin-plot"></div>
+        </details>
+        <details>
+            <summary>Bird Trait Distribution</summary>
+            <div id="bird-violin-plot"></div>
+        </details>
     </div>
     <script type="module" src="js/main.js"></script>
 </body>
-</html>
+</html>```
+
+### `overlay.css`
+I've added styling for the new collapsible sections and graph containers.
+
+```css
+#overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 350px; /* Increased width for graphs */
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+    transition: opacity 0.5s ease-in-out;
+    max-height: 95vh; /* Limit height and allow scrolling */
+    overflow-y: auto;
+}
+
+#overlay p {
+    margin: 5px 0;
+}
+
+.overlay-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Styling for collapsible sections */
+details {
+    margin-bottom: 10px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+summary {
+    cursor: pointer;
+    font-weight: bold;
+    outline: none;
+}
+
+/* Graph container styling */
+.js-plotly-plot .plotly .modebar {
+    display: none !important; /* Hide the plotly mode bar */
+}
