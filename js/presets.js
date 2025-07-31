@@ -8,6 +8,7 @@ export const MAX_BEES = 150;
 export const MAX_BIRDS = 30;
 export const MIN_HOME_SEPARATION = 40; // Minimum pixels between nests/hives on the same tree
 export const GROUND_HEIGHT = 30; // Define ground height for physics and drawing
+export const MIN_FLOWERS = 5; // Minimum number of flower-producing shrubs
 
 // --- EVOLUTIONARY CONSTANTS ---
 export const MUTATION_RATE = 0.15; // 15% chance for each gene to mutate

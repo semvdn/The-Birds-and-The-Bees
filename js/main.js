@@ -2,7 +2,7 @@ import {
     MIN_TREES, MAX_TREES, PASTEL_FLOWER_COLORS,
     TREE_PRESETS, SHRUB_PRESETS, WEED_PRESETS,
     BIRD_SETTINGS, BEE_SETTINGS, HIVE_SETTINGS, NEST_SETTINGS,
-    MAX_BEES, MAX_BIRDS, MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH,
+    MAX_BEES, MAX_BIRDS, MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH, MIN_FLOWERS,
     BIRD_GENES, PARENT_PRESETS, MUTATION_RATE, MUTATION_AMOUNT,
     BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE, GROUND_HEIGHT
 } from './presets.js';
@@ -304,9 +304,19 @@ function initialize() {
         }
     }
 
-    const numShrubs = 15; const spacingShrubs = canvas.width / numShrubs;
+    const flowerPresets = SHRUB_PRESETS.filter(p => p.type === 'flower');
+    const numShrubs = 15; 
+    const spacingShrubs = canvas.width / numShrubs;
     for (let i = 0; i < numShrubs; i++) {
-        const preset = SHRUB_PRESETS[Math.floor(Math.random() * SHRUB_PRESETS.length)];
+        let preset;
+        // Ensure the minimum number of flowers are generated first
+        if (i < MIN_FLOWERS && flowerPresets.length > 0) {
+            preset = flowerPresets[Math.floor(Math.random() * flowerPresets.length)];
+        } else {
+            // Then generate the rest randomly from all shrub presets
+            preset = SHRUB_PRESETS[Math.floor(Math.random() * SHRUB_PRESETS.length)];
+        }
+
         const plant = setupPlantData(preset, 'shrub');
         const targetHeight = canvas.height * (0.15 + Math.random() * 0.1);
         plant.scale = targetHeight / plant.unscaledHeight;
