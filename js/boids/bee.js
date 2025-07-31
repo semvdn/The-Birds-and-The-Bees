@@ -9,6 +9,7 @@ export class Bee extends Boid {
         this.nectar = 0;
         this.targetFlower = null;
         this.gatheringCountdown = 0;
+        this.lastVisitedFlower = null; // Remember the last flower for the waggle dance
     }
 
     update(world) {
@@ -40,7 +41,6 @@ export class Bee extends Boid {
             if (flower.nectar >= 1) {
                 const dist = Math.hypot(this.position.x - flower.position.x, this.position.y - flower.position.y);
                 if (dist < this.settings.visualRange) {
-                    // Score is nectar amount divided by distance squared (to heavily prioritize closer flowers)
                     const score = flower.nectar / (dist * dist + 1);
                     if (score > bestScore) {
                         bestScore = score;
@@ -53,7 +53,17 @@ export class Bee extends Boid {
     }
 
     seekFlower(flowers) {
-        // Find a new target if the current one is gone or empty
+        // If the bee has no target, try to get one from the hive's shared knowledge
+        if (!this.targetFlower && this.hive.knownFlowerLocations.length > 0) {
+            // Pick a random known location to avoid all bees swarming the same flower
+            const knownFlower = this.hive.knownFlowerLocations[Math.floor(Math.random() * this.hive.knownFlowerLocations.length)];
+            // Check if the known flower still exists and has nectar
+            if (knownFlower && knownFlower.nectar >= 1) {
+                this.targetFlower = knownFlower;
+            }
+        }
+        
+        // If there's still no target, or the target is empty, search locally
         if (!this.targetFlower || this.targetFlower.nectar < 1) {
             this.targetFlower = this.findBestFlower(flowers);
         }
@@ -63,9 +73,8 @@ export class Bee extends Boid {
             if (dist < 5) { // Arrived at flower
                 this.state = 'GATHERING_NECTAR';
                 this.gatheringCountdown = this.settings.gatherTime;
-                this.velocity = { x: 0, y: 0 }; // Stop moving while gathering
+                this.velocity = { x: 0, y: 0 }; 
             } else {
-                // Steer towards the target flower
                 const steer = {
                     x: this.targetFlower.position.x - this.position.x,
                     y: this.targetFlower.position.y - this.position.y
@@ -79,17 +88,16 @@ export class Bee extends Boid {
     gatherNectar() {
         this.gatheringCountdown--;
         if (this.gatheringCountdown <= 0) {
-            // Collect a bulk amount of nectar
             const nectarToTake = Math.min(
-                this.targetFlower.nectar, // what the flower has
-                this.settings.nectarCapacity - this.nectar // how much space the bee has
+                this.targetFlower.nectar,
+                this.settings.nectarCapacity - this.nectar
             );
 
             this.nectar += nectarToTake;
             this.targetFlower.nectar -= nectarToTake;
-            this.targetFlower = null; // Forget this flower
+            this.lastVisitedFlower = this.targetFlower; // Remember this flower
+            this.targetFlower = null; 
 
-            // Decide what to do next
             if (this.nectar >= this.settings.nectarCapacity) {
                 this.state = 'RETURN_TO_HIVE';
             } else {
@@ -107,9 +115,22 @@ export class Bee extends Boid {
                 this.hive.dnaPool[key] += this.dna[key];
             }
             this.nectar = 0;
+            
+            // **Waggle Dance**: Share the location of the last visited flower
+            if (this.lastVisitedFlower && this.lastVisitedFlower.nectar > 0) {
+                // Add to hive's knowledge if not already there
+                if (!this.hive.knownFlowerLocations.includes(this.lastVisitedFlower)) {
+                    this.hive.knownFlowerLocations.push(this.lastVisitedFlower);
+                    // Limit the size of the known locations to avoid old data
+                    if (this.hive.knownFlowerLocations.length > 5) {
+                        this.hive.knownFlowerLocations.shift(); // Remove the oldest entry
+                    }
+                }
+            }
+            this.lastVisitedFlower = null;
+
             this.state = 'SEEKING_FLOWER';
         } else {
-            // Use the stronger returnFactor for a more urgent return
             const steer = {
                 x: this.hive.position.x - this.position.x,
                 y: this.hive.position.y - this.position.y

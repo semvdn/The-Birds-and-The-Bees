@@ -115,6 +115,13 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame++;
 
+    // Periodically clear the hive's memory of flower locations to ensure information stays fresh
+    if (frame % 300 === 0) { // Every 5 seconds (assuming 60fps)
+        for (const hive of hives) {
+            hive.knownFlowerLocations.length = 0;
+        }
+    }
+
     birdGrid.clear();
     for (const bird of birds) if (bird.isAlive) birdGrid.insert(bird);
     beeGrid.clear();
@@ -285,6 +292,7 @@ function initialize() {
                 newHome.dnaPool = {};
                 for (const key in BEE_DNA_TEMPLATE) newHome.dnaPool[key] = 0;
                 newHome.contributorCount = 0;
+                newHome.knownFlowerLocations = []; // <-- ADDED: For waggle dance
                 hives.push(newHome);
                 preRenderHive(newHome);
             } else {
@@ -309,11 +317,9 @@ function initialize() {
     const spacingShrubs = canvas.width / numShrubs;
     for (let i = 0; i < numShrubs; i++) {
         let preset;
-        // Ensure the minimum number of flowers are generated first
         if (i < MIN_FLOWERS && flowerPresets.length > 0) {
             preset = flowerPresets[Math.floor(Math.random() * flowerPresets.length)];
         } else {
-            // Then generate the rest randomly from all shrub presets
             preset = SHRUB_PRESETS[Math.floor(Math.random() * SHRUB_PRESETS.length)];
         }
 
