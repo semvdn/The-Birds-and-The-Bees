@@ -62,20 +62,66 @@ export function drawBee(ctx, boid) {
     ctx.restore();
 }
 
+export function preRenderHive(hive) {
+    const width = 35, height = 50;
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = width;
+    offscreenCanvas.height = height;
+    const oCtx = offscreenCanvas.getContext('2d');
+
+    oCtx.save();
+    oCtx.translate(width / 2, height / 2);
+
+    const mainColor = '#D4A75A', bandColor = '#A97E33', entranceColor = '#4a381c';
+    const w = 15, h = 22;
+
+    oCtx.fillStyle = mainColor;
+    oCtx.beginPath(); oCtx.ellipse(0, -h * 0.3, w, h * 0.7, 0, 0, Math.PI * 2); oCtx.fill();
+    oCtx.beginPath(); oCtx.ellipse(0, h * 0.15, w * 1.2, h * 0.8, 0, 0, Math.PI * 2); oCtx.fill();
+    oCtx.beginPath(); oCtx.ellipse(0, h * 0.5, w * 0.9, h * 0.6, 0, 0, Math.PI * 2); oCtx.fill();
+    oCtx.strokeStyle = bandColor; oCtx.lineWidth = 2;
+    oCtx.beginPath(); oCtx.moveTo(-w * 0.9, -h * 0.05); oCtx.quadraticCurveTo(0, 0, w * 0.9, -h * 0.05); oCtx.stroke();
+    oCtx.beginPath(); oCtx.moveTo(-w * 1.1, h * 0.3); oCtx.quadraticCurveTo(0, h * 0.45, w * 1.1, h * 0.3); oCtx.stroke();
+    oCtx.beginPath(); oCtx.moveTo(-w * 0.7, h * 0.6); oCtx.quadraticCurveTo(0, h * 0.75, w * 0.7, h * 0.6); oCtx.stroke();
+    
+    oCtx.fillStyle = entranceColor; 
+    oCtx.beginPath(); 
+    // FIXED: Was 'ctx.arc', now correctly uses the offscreen context 'oCtx'
+    oCtx.arc(0, 12, 4, 0, Math.PI * 2); 
+    oCtx.fill();
+    
+    oCtx.restore();
+    hive.preRenderedCanvas = offscreenCanvas;
+}
+
+export function preRenderNest(nest) {
+    const size = nest.radius * 3;
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = size;
+    offscreenCanvas.height = size;
+    const oCtx = offscreenCanvas.getContext('2d');
+
+    oCtx.save();
+    oCtx.translate(size / 2, size / 2);
+    oCtx.lineWidth = 1.5;
+
+    for (const twig of nest.twigs) {
+        oCtx.strokeStyle = twig.color;
+        oCtx.beginPath();
+        oCtx.moveTo(twig.x1, twig.y1);
+        oCtx.quadraticCurveTo(twig.cpX, twig.cpY, twig.x2, twig.y2);
+        oCtx.stroke();
+    }
+    
+    oCtx.restore();
+    nest.preRenderedCanvas = offscreenCanvas;
+}
+
 export function drawHive(ctx, hive) {
+    if (!hive.preRenderedCanvas) return;
     ctx.save();
     ctx.translate(hive.position.x, hive.position.y);
-    const mainColor = '#D4A75A', bandColor = '#A97E33', entranceColor = '#4a381c';
-    const width = 15, height = 22;
-    ctx.fillStyle = mainColor;
-    ctx.beginPath(); ctx.ellipse(0, -height * 0.3, width, height * 0.7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(0, height * 0.15, width * 1.2, height * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(0, height * 0.5, width * 0.9, height * 0.6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = bandColor; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(-width * 0.9, -height * 0.05); ctx.quadraticCurveTo(0, 0, width * 0.9, -height * 0.05); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-width * 1.1, height * 0.3); ctx.quadraticCurveTo(0, height * 0.45, width * 1.1, height * 0.3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-width * 0.7, height * 0.6); ctx.quadraticCurveTo(0, height * 0.75, width * 0.7, height * 0.6); ctx.stroke();
-    ctx.fillStyle = entranceColor; ctx.beginPath(); ctx.arc(0, 12, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(hive.preRenderedCanvas, -hive.preRenderedCanvas.width / 2, -hive.preRenderedCanvas.height / 2);
     ctx.restore();
 }
 
@@ -88,16 +134,13 @@ export function drawHiveProgressBar(ctx, hive, nectarForNewBee) {
 }
 
 export function drawNest(ctx, nest) {
+    if (!nest.preRenderedCanvas) return;
     ctx.save();
     ctx.translate(nest.position.x, nest.position.y);
-    ctx.translate(0, -nest.radius * 2.0);
-    ctx.lineWidth = 1.5;
-    for (const twig of nest.twigs) {
-        ctx.strokeStyle = twig.color; ctx.beginPath();
-        ctx.moveTo(twig.x1, twig.y1);
-        ctx.quadraticCurveTo(twig.cpX, twig.cpY, twig.x2, twig.y2);
-        ctx.stroke();
-    }
+    ctx.translate(0, -nest.radius * 1.5); // Offset for better visual placement
+
+    ctx.drawImage(nest.preRenderedCanvas, -nest.preRenderedCanvas.width / 2, -nest.preRenderedCanvas.height / 2);
+    
     if (nest.hasEgg && nest.hatchingCountdown > 0) {
         drawEgg(ctx, nest);
     }

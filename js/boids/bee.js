@@ -1,18 +1,22 @@
 import { Boid } from './boid.js';
 
 export class Bee extends Boid {
-    constructor(x, y, settings, hive) {
-        super(x, y, settings);
+    constructor(x, y, settings, hive, dna) {
+        super(x, y, { ...settings, ...dna });
         this.hive = hive;
-        this.state = 'SEEKING_FLOWER'; // SEEKING_FLOWER, RETURN_TO_HIVE
+        this.dna = dna;
+        this.state = 'SEEKING_FLOWER';
         this.nectar = 0;
         this.targetFlower = null;
     }
 
     update(world) {
+        // Pass the world and a specific list of boids (all bees) to the parent update method
         super.update({ ...world, boids: world.bees });
 
-        const evade = this.evade(world.birds);
+        // Use the bird grid to find local predators to evade
+        const localPredators = world.birdGrid.query(this);
+        const evade = this.evade(localPredators);
         this.velocity.x += evade.x * this.settings.evadeFactor;
         this.velocity.y += evade.y * this.settings.evadeFactor;
 
@@ -49,7 +53,7 @@ export class Bee extends Boid {
 
         if (this.targetFlower) {
             const dist = Math.hypot(this.position.x - this.targetFlower.position.x, this.position.y - this.targetFlower.position.y);
-            if (dist < 5) { // Arrived at flower
+            if (dist < 5) {
                 this.nectar++;
                 this.targetFlower.nectar--;
             } else {
@@ -65,8 +69,12 @@ export class Bee extends Boid {
 
     returnToHive() {
         const dist = Math.hypot(this.position.x - this.hive.position.x, this.position.y - this.hive.position.y);
-        if (dist < 10) { // Arrived at hive
+        if (dist < 10) {
             this.hive.nectar += this.nectar;
+            this.hive.contributorCount++;
+            for (const key in this.dna) {
+                this.hive.dnaPool[key] += this.dna[key];
+            }
             this.nectar = 0;
             this.state = 'SEEKING_FLOWER';
         } else {

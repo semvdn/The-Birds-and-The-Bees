@@ -3,13 +3,18 @@ import {
     TREE_PRESETS, SHRUB_PRESETS, WEED_PRESETS,
     BIRD_SETTINGS, BEE_SETTINGS, HIVE_SETTINGS, NEST_SETTINGS,
     MAX_BEES, MAX_BIRDS, MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH,
-    BIRD_GENES, PARENT_PRESETS
+    BIRD_GENES, PARENT_PRESETS, MUTATION_RATE, MUTATION_AMOUNT,
+    BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE
 } from './presets.js';
 import { setupPlantData } from './lsystem.js';
 import { preRenderPlant, drawPlant } from './drawing.js';
 import { Bird } from './boids/bird.js';
 import { Bee } from './boids/bee.js';
-import { drawBird, drawBee, drawHive, drawNest, drawHiveProgressBar } from './boids/drawing.js';
+import { 
+    drawBird, drawBee, drawHive, drawNest, drawHiveProgressBar, 
+    preRenderHive, preRenderNest 
+} from './boids/drawing.js';
+import { Grid } from './boids/grid.js';
 
 const canvas = document.getElementById('treeCanvas');
 const ctx = canvas.getContext('2d');
@@ -21,6 +26,17 @@ let trees = [], shrubs = [], weeds = [], flowers = [];
 let birds = [], bees = [];
 let hives = [], nests = [];
 let frame = 0;
+let birdGrid, beeGrid;
+let isOverlayVisible = false;
+
+function mutate(value, min, max) {
+    if (Math.random() < MUTATION_RATE) {
+        const range = max - min;
+        const change = (Math.random() - 0.5) * 2 * range * MUTATION_AMOUNT;
+        return Math.max(min, Math.min(max, value + change));
+    }
+    return value;
+}
 
 function blendHexColors(hex1, hex2) {
     const num1 = parseInt(hex1.slice(1), 16), num2 = parseInt(hex2.slice(1), 16);
@@ -40,39 +56,39 @@ function interpolateVertices(v1, v2, weight) {
     });
 }
 
-function determineInheritance(genes1, genes2) {
-    // A random weight decides how much influence parent 2 has over parent 1.
-    // 0.0 = pure parent 1, 1.0 = pure parent 2.
-    // We keep it away from the extremes to ensure a blend.
+function determineInheritance(genes1, dna1, genes2, dna2) {
     const weight = Math.random() * 0.6 + 0.2;
-
-    // --- Shape Interpolation ---
     const newBodyVertices = interpolateVertices(genes1.bodyVertices, genes2.bodyVertices, weight);
     const newBeakVertices = interpolateVertices(genes1.beakVertices, genes2.beakVertices, weight);
     const newTailVertices = interpolateVertices(genes1.tailVertices, genes2.tailVertices, weight);
 
-    // --- Color Blending ---
     const palette1 = genes1.palette.colors, palette2 = genes2.palette.colors;
     const newPaletteColors = {};
     for (const key in palette1) {
-        // Don't blend the outline or beak color, keep them dark for contrast
         newPaletteColors[key] = (key === 'outline' || key === 'beak') ? palette1[key] : blendHexColors(palette1[key], palette2[key]);
     }
     const newPalette = { name: "Hybrid", colors: newPaletteColors };
 
-    return {
+    const inheritedGenes = {
         palette: newPalette,
         bodyVertices: newBodyVertices,
         beakVertices: newBeakVertices,
         tailVertices: newTailVertices,
-        // Carry the original base genes forward for the next generation's inheritance calculation
         baseGenes: {
             baseBeak: Math.random() < 0.5 ? genes1.baseGenes.baseBeak : genes2.baseGenes.baseBeak,
             baseTail: Math.random() < 0.5 ? genes1.baseGenes.baseTail : genes2.baseGenes.baseTail,
         }
     };
-}
 
+    const inheritedDna = {};
+    for (const key in dna1) {
+        const avg = (dna1[key] + dna2[key]) / 2;
+        const template = BIRD_DNA_TEMPLATE[key];
+        inheritedDna[key] = mutate(avg, template.min, template.max);
+    }
+
+    return { inheritedGenes, inheritedDna };
+}
 
 function recalculateHomePositions() {
     const allHomes = [...hives, ...nests];
@@ -98,9 +114,15 @@ function recalculateHomePositions() {
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame++;
+
+    birdGrid.clear();
+    for (const bird of birds) if (bird.isAlive) birdGrid.insert(bird);
+    beeGrid.clear();
+    for (const bee of bees) if (bee.isAlive) beeGrid.insert(bee);
+
     recalculateHomePositions();
 
-    const world = { birds, bees, flowers, hives, nests, canvas };
+    const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid };
     const allPlants = [...trees, ...shrubs, ...weeds];
     allPlants.sort((a, b) => b.x - a.x);
 
@@ -117,13 +139,27 @@ function animate() {
     
     bees = bees.filter(bee => bee.isAlive);
     birds = birds.filter(bird => bird.isAlive);
-    const isOverlayVisible = !overlay.classList.contains('overlay-hidden');
+    
     if (isOverlayVisible) updatePopulationDisplay();
     
     for (const hive of hives) {
         if (hive.nectar >= HIVE_SETTINGS.NECTAR_FOR_NEW_BEE && bees.length < MAX_BEES) {
             hive.nectar -= HIVE_SETTINGS.NECTAR_FOR_NEW_BEE;
-            bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive));
+            const newBeeDna = {};
+            if (hive.contributorCount > 0) {
+                for (const key in BEE_DNA_TEMPLATE) {
+                    const avgValue = hive.dnaPool[key] / hive.contributorCount;
+                    const template = BEE_DNA_TEMPLATE[key];
+                    newBeeDna[key] = mutate(avgValue, template.min, template.max);
+                }
+            } else {
+                for (const key in BEE_DNA_TEMPLATE) {
+                    newBeeDna[key] = BEE_DNA_TEMPLATE[key].initial;
+                }
+            }
+            bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive, newBeeDna));
+            hive.contributorCount = 0;
+            for (const key in hive.dnaPool) hive.dnaPool[key] = 0;
         }
     }
 
@@ -139,6 +175,7 @@ function animate() {
                 nest.hatchingCountdown = NEST_SETTINGS.HATCH_TIME_SECONDS * 60;
                 const matingPair = Array.from(nest.occupants);
                 nest.parentGenes = [matingPair[0].genes, matingPair[1].genes];
+                nest.parentDna = [matingPair[0].dna, matingPair[1].dna];
                 for (const parent of matingPair) parent.resetMating();
                 nest.occupants.clear();
             }
@@ -147,11 +184,15 @@ function animate() {
         if (nest.hasEgg) {
             nest.hatchingCountdown--;
             if (nest.hatchingCountdown <= 0) {
-                const inheritedGenes = determineInheritance(nest.parentGenes[0], nest.parentGenes[1]);
-                const newBird = new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, inheritedGenes);
+                const { inheritedGenes, inheritedDna } = determineInheritance(
+                    nest.parentGenes[0], nest.parentDna[0], 
+                    nest.parentGenes[1], nest.parentDna[1]
+                );
+                const newBird = new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, inheritedGenes, inheritedDna);
                 birds.push(newBird);
                 nest.hasEgg = false;
                 nest.parentGenes = [];
+                nest.parentDna = [];
             }
         }
     }
@@ -188,6 +229,11 @@ function getStaticBranchPosition(plant, branchPoint) {
 function initialize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    
+    const cellSize = 100;
+    birdGrid = new Grid(canvas.width, canvas.height, cellSize);
+    beeGrid = new Grid(canvas.width, canvas.height, cellSize);
+
     trees = []; shrubs = []; weeds = []; flowers = [];
     birds = []; bees = []; hives = []; nests = [];
     
@@ -210,9 +256,14 @@ function initialize() {
 
             const newHome = { position: candidatePos, tree: plant, branchPoint: bp };
             if (isHive) {
-                newHome.nectar = 0; hives.push(newHome);
+                newHome.nectar = 0;
+                newHome.dnaPool = {};
+                for (const key in BEE_DNA_TEMPLATE) newHome.dnaPool[key] = 0;
+                newHome.contributorCount = 0;
+                hives.push(newHome);
+                preRenderHive(newHome); // Pre-render the hive
             } else {
-                newHome.occupants = new Set(); newHome.hasEgg = false; newHome.hatchingCountdown = 0; newHome.nestingCountdown = 0; newHome.parentGenes = [];
+                newHome.occupants = new Set(); newHome.hasEgg = false; newHome.hatchingCountdown = 0; newHome.nestingCountdown = 0; newHome.parentGenes = []; newHome.parentDna = [];
                 const nestRadius = 15; newHome.radius = nestRadius; newHome.twigs = [];
                 const numTwigs = 80; const brownPalette = ['#8B5A2B', '#654321', '#5C4033', '#A0522D'];
                 for (let k = 0; k < numTwigs; k++) {
@@ -222,6 +273,7 @@ function initialize() {
                     newHome.twigs.push(twig);
                 }
                 nests.push(newHome);
+                preRenderNest(newHome); // Pre-render the nest
             }
             homesOnThisTree.push(newHome); isHive = !isHive;
         }
@@ -253,27 +305,28 @@ function initialize() {
     }
 
     if (nests.length > 0) {
+        const initialBirdDna = {};
+        for (const key in BIRD_DNA_TEMPLATE) initialBirdDna[key] = BIRD_DNA_TEMPLATE[key].initial;
         for (let i = 0; i < 10; i++) {
             const nest = nests[i % nests.length];
             const parentPreset = PARENT_PRESETS[i % PARENT_PRESETS.length];
             const bodyVertices = BIRD_GENES.BODY_SHAPES[parentPreset.genes.baseBeak.body].vertices;
-            
-            // Convert preset into the final gene structure that the bird object expects
             const birdGenes = {
                 palette: parentPreset.genes.palette,
                 bodyVertices: bodyVertices,
                 beakVertices: parentPreset.genes.baseBeak.vertices,
                 tailVertices: parentPreset.genes.baseTail.vertices(bodyVertices),
-                // Store the original preset genes for the first round of inheritance
                 baseGenes: parentPreset.genes
             };
-            birds.push(new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, birdGenes));
+            birds.push(new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, birdGenes, initialBirdDna));
         }
     }
     if (hives.length > 0) {
+        const initialBeeDna = {};
+        for (const key in BEE_DNA_TEMPLATE) initialBeeDna[key] = BEE_DNA_TEMPLATE[key].initial;
         for (let i = 0; i < 50; i++) {
             const hive = hives[i % hives.length];
-            bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive));
+            bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive, initialBeeDna));
         }
     }
 }
@@ -282,7 +335,8 @@ window.addEventListener('resize', initialize);
 window.addEventListener('keydown', (event) => {
     if (event.key === 'M' || event.key === 'm') {
         overlay.classList.toggle('overlay-hidden');
-        if (!overlay.classList.contains('overlay-hidden')) {
+        isOverlayVisible = !overlay.classList.contains('overlay-hidden');
+        if (isOverlayVisible) {
             updatePopulationDisplay();
         }
     }

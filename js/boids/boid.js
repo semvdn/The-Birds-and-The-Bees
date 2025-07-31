@@ -9,17 +9,77 @@ export class Boid {
     update(world) {
         if (!this.isAlive) return;
 
-        const separation = this.separation(world.boids);
-        const alignment = this.alignment(world.boids);
-        const cohesion = this.cohesion(world.boids);
+        // Use the appropriate spatial grid to get a small list of local neighbors
+        const boidGrid = world.boids === world.birds ? world.birdGrid : world.beeGrid;
+        const localBoids = boidGrid.query(this);
 
-        this.velocity.x += separation.x * this.settings.separationFactor;
-        this.velocity.y += separation.y * this.settings.separationFactor;
-        this.velocity.x += alignment.x * this.settings.alignmentFactor;
-        this.velocity.y += alignment.y * this.settings.alignmentFactor;
-        this.velocity.x += cohesion.x * this.settings.cohesionFactor;
-        this.velocity.y += cohesion.y * this.settings.cohesionFactor;
+        const sep = { x: 0, y: 0 };
+        const ali = { x: 0, y: 0 };
+        const coh = { x: 0, y: 0 };
+        let sepCount = 0, aliCount = 0, cohCount = 0;
 
+        // --- Consolidated Steering Calculation ---
+        // Iterate once through local boids to calculate all forces.
+        for (const other of localBoids) {
+            if (other === this || !other.isAlive) continue;
+
+            const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
+
+            // All three steering behaviors are based on visual range
+            if (distance > 0 && distance < this.settings.visualRange) {
+                // Cohesion: Steer towards the center of mass of neighbors
+                coh.x += other.position.x;
+                coh.y += other.position.y;
+                cohCount++;
+
+                // Alignment: Steer in the same direction as neighbors
+                ali.x += other.velocity.x;
+                ali.y += other.velocity.y;
+                aliCount++;
+
+                // Separation: Steer away from very close neighbors
+                if (distance < this.settings.separationDistance) {
+                    const diffX = (this.position.x - other.position.x) / distance; // Normalize
+                    const diffY = (this.position.y - other.position.y) / distance; // Normalize
+                    sep.x += diffX;
+                    sep.y += diffY;
+                    sepCount++;
+                }
+            }
+        }
+
+        // Apply separation force
+        if (sepCount > 0) {
+            sep.x /= sepCount;
+            sep.y /= sepCount;
+            this.velocity.x += sep.x * this.settings.separationFactor;
+            this.velocity.y += sep.y * this.settings.separationFactor;
+        }
+
+        // Apply alignment force
+        if (aliCount > 0) {
+            ali.x /= aliCount;
+            ali.y /= aliCount;
+            const speed = Math.hypot(ali.x, ali.y);
+            if (speed > 0) {
+                this.velocity.x += ((ali.x / speed) * this.settings.maxSpeed - this.velocity.x) * this.settings.alignmentFactor;
+                this.velocity.y += ((ali.y / speed) * this.settings.maxSpeed - this.velocity.y) * this.settings.alignmentFactor;
+            }
+        }
+
+        // Apply cohesion force
+        if (cohCount > 0) {
+            coh.x /= cohCount;
+            coh.y /= cohCount;
+            const steerX = coh.x - this.position.x;
+            const steerY = coh.y - this.position.y;
+            const speed = Math.hypot(steerX, steerY);
+            if (speed > 0) {
+                this.velocity.x += (steerX / speed * this.settings.maxSpeed - this.velocity.x) * this.settings.cohesionFactor;
+                this.velocity.y += (steerY / speed * this.settings.maxSpeed - this.velocity.y) * this.settings.cohesionFactor;
+            }
+        }
+        
         this.limitSpeed();
         this.avoidEdges(world.canvas);
 
@@ -30,8 +90,9 @@ export class Boid {
     limitSpeed() {
         const speed = Math.hypot(this.velocity.x, this.velocity.y);
         if (speed > this.settings.maxSpeed) {
-            this.velocity.x = (this.velocity.x / speed) * this.settings.maxSpeed;
-            this.velocity.y = (this.velocity.y / speed) * this.settings.maxSpeed;
+            const ratio = this.settings.maxSpeed / speed;
+            this.velocity.x *= ratio;
+            this.velocity.y *= ratio;
         }
     }
 
@@ -41,79 +102,5 @@ export class Boid {
         if (this.position.x > canvas.width - margin) this.velocity.x -= this.settings.turnFactor;
         if (this.position.y < margin) this.velocity.y += this.settings.turnFactor;
         if (this.position.y > canvas.height - margin) this.velocity.y -= this.settings.turnFactor;
-    }
-
-    separation(boids) {
-        const steering = { x: 0, y: 0 };
-        let total = 0;
-        for (const other of boids) {
-            if (other !== this && other.isAlive) {
-                const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
-                if (distance > 0 && distance < this.settings.separationDistance) {
-                    let diffX = (this.position.x - other.position.x) / distance;
-                    let diffY = (this.position.y - other.position.y) / distance;
-                    steering.x += diffX;
-                    steering.y += diffY;
-                    total++;
-                }
-            }
-        }
-        if (total > 0) {
-            steering.x /= total;
-            steering.y /= total;
-        }
-        return steering;
-    }
-
-    alignment(boids) {
-        const steering = { x: 0, y: 0 };
-        let total = 0;
-        for (const other of boids) {
-            if (other !== this && other.isAlive) {
-                const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
-                if (distance < this.settings.visualRange) {
-                    steering.x += other.velocity.x;
-                    steering.y += other.velocity.y;
-                    total++;
-                }
-            }
-        }
-        if (total > 0) {
-            steering.x /= total;
-            steering.y /= total;
-            const speed = Math.hypot(steering.x, steering.y);
-            if (speed > 0) {
-                steering.x = (steering.x / speed) * this.settings.maxSpeed;
-                steering.y = (steering.y / speed) * this.settings.maxSpeed;
-            }
-        }
-        return steering;
-    }
-
-    cohesion(boids) {
-        const steering = { x: 0, y: 0 };
-        let total = 0;
-        for (const other of boids) {
-            if (other !== this && other.isAlive) {
-                const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
-                if (distance < this.settings.visualRange) {
-                    steering.x += other.position.x;
-                    steering.y += other.position.y;
-                    total++;
-                }
-            }
-        }
-        if (total > 0) {
-            steering.x /= total;
-            steering.y /= total;
-            steering.x -= this.position.x;
-            steering.y -= this.position.y;
-            const speed = Math.hypot(steering.x, steering.y);
-            if (speed > 0) {
-                steering.x = (steering.x / speed) * this.settings.maxSpeed;
-                steering.y = (steering.y / speed) * this.settings.maxSpeed;
-            }
-        }
-        return steering;
     }
 }

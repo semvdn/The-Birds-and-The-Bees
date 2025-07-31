@@ -2,14 +2,15 @@ import { Boid } from './boid.js';
 import { NEST_SETTINGS } from '../presets.js';
 
 export class Bird extends Boid {
-    constructor(x, y, settings, nest, genes) {
-        super(x, y, settings);
+    constructor(x, y, settings, nest, genes, dna) {
+        super(x, y, { ...settings, ...dna });
         this.homeNest = nest;
         this.matingNest = null;
         this.beesCaught = 0;
         this.partner = null;
         this.state = 'HUNTING';
-        this.genes = genes; // Holds final vertex data and color palette
+        this.genes = genes;
+        this.dna = dna;
     }
 
     update(world) {
@@ -17,7 +18,9 @@ export class Bird extends Boid {
 
         switch (this.state) {
             case 'HUNTING':
-                const hunt = this.hunt(world.bees);
+                // Use the bee grid to find local prey
+                const localPrey = world.beeGrid.query(this);
+                const hunt = this.hunt(localPrey);
                 this.velocity.x += hunt.x * this.settings.huntFactor;
                 this.velocity.y += hunt.y * this.settings.huntFactor;
                 if (this.beesCaught >= NEST_SETTINGS.BEES_FOR_NEW_BIRD) {
@@ -26,7 +29,9 @@ export class Bird extends Boid {
                 break;
             
             case 'SEEKING_MATE':
-                this.findPartner(world.birds);
+                // Use the bird grid to find local partners
+                const localMates = world.birdGrid.query(this);
+                this.findPartner(localMates);
                 this.velocity.x += (Math.random() - 0.5) * 0.1;
                 this.velocity.y += (Math.random() - 0.5) * 0.1;
                 break;

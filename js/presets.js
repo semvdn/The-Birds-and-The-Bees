@@ -8,6 +8,10 @@ export const MAX_BEES = 150;
 export const MAX_BIRDS = 20;
 export const MIN_HOME_SEPARATION = 40; // Minimum pixels between nests/hives on the same tree
 
+// --- EVOLUTIONARY CONSTANTS ---
+export const MUTATION_RATE = 0.15; // 15% chance for each gene to mutate
+export const MUTATION_AMOUNT = 0.05; // Mutate by up to 5% of the value's range
+
 // --- PRESET DEFINITIONS ---
 export const PASTEL_FLOWER_COLORS = ['#ffadad', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#a0c4ff', '#bdb2ff', '#ffc6ff'];
 
@@ -35,8 +39,33 @@ export const WEED_PRESETS = [
 // --- BOID SIMULATION CONSTANTS ---
 export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 10 };
 export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 2, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
-export const BIRD_SETTINGS = { maxSpeed: 3, visualRange: 150, separationDistance: 25, separationFactor: 0.05, alignmentFactor: 0.05, cohesionFactor: 0.005, turnFactor: 0.2, huntFactor: 0.002, killRange: 5 };
-export const BEE_SETTINGS = { maxSpeed: 2.5, visualRange: 70, separationDistance: 20, separationFactor: 0.05, alignmentFactor: 0.03, cohesionFactor: 0.002, turnFactor: 0.3, evadeFactor: 0.01, nectarCapacity: 5 };
+
+// --- BASE SETTINGS (NON-HERITABLE) ---
+export const BIRD_SETTINGS = { maxSpeed: 3, killRange: 5 };
+export const BEE_SETTINGS = { maxSpeed: 2.5, nectarCapacity: 5 };
+
+// --- HERITABLE BIRD PARAMETERS ---
+export const BIRD_DNA_TEMPLATE = {
+    visualRange:        { initial: 150, min: 100, max: 200 },
+    separationDistance: { initial: 40,  min: 20,  max: 60  },
+    separationFactor:   { initial: 0.05,min: 0.01,max: 0.1 },
+    alignmentFactor:    { initial: 0.05,min: 0.01,max: 0.1 },
+    cohesionFactor:     { initial: 0.005,min: 0.001,max:0.01},
+    turnFactor:         { initial: 0.2, min: 0.1, max: 0.4 },
+    huntFactor:         { initial: 0.002,min: 0.001,max:0.005}
+};
+
+// --- HERITABLE BEE PARAMETERS ---
+export const BEE_DNA_TEMPLATE = {
+    visualRange:        { initial: 70,  min: 50,  max: 120 },
+    separationDistance: { initial: 20,  min: 10,  max: 40  },
+    separationFactor:   { initial: 0.05,min: 0.01,max: 0.1 },
+    alignmentFactor:    { initial: 0.03,min: 0.01,max: 0.08},
+    cohesionFactor:     { initial: 0.002,min: 0.0005,max:0.005},
+    turnFactor:         { initial: 0.3, min: 0.1, max: 0.5 },
+    evadeFactor:        { initial: 0.01,min: 0.005,max:0.03 }
+};
+
 
 // --- BIRD GENETIC PRESETS (REWORKED FOR INTERPOLATION) ---
 export const BIRD_GENES = {
