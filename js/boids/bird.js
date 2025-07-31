@@ -18,18 +18,22 @@ export class Bird extends Boid {
 
         switch (this.state) {
             case 'HUNTING':
-                // Use the bee grid to find local prey
                 const localPrey = world.beeGrid.query(this);
+                
+                // 1. Steer towards the best target
                 const hunt = this.hunt(localPrey);
                 this.velocity.x += hunt.x * this.settings.huntFactor;
                 this.velocity.y += hunt.y * this.settings.huntFactor;
+
+                // 2. Check for a catch against any nearby prey
+                this.checkCatch(localPrey);
+
                 if (this.beesCaught >= NEST_SETTINGS.BEES_FOR_NEW_BIRD) {
                     this.state = 'SEEKING_MATE';
                 }
                 break;
             
             case 'SEEKING_MATE':
-                // Use the bird grid to find local partners
                 const localMates = world.birdGrid.query(this);
                 this.findPartner(localMates);
                 this.velocity.x += (Math.random() - 0.5) * 0.1;
@@ -43,6 +47,32 @@ export class Bird extends Boid {
             case 'GO_TO_NEST':
                 this.goToNest();
                 break;
+        }
+    }
+
+    /**
+     * A robust check to see if a bee has been caught.
+     * This iterates through all nearby prey and uses an expanded hitbox based on velocity
+     * to prevent "tunneling" where a fast bird passes through a bee between frames.
+     * @param {Bee[]} prey - An array of nearby bees to check against.
+     */
+    checkCatch(prey) {
+        for (const p of prey) {
+            if (p.isAlive) {
+                const distance = Math.hypot(this.position.x - p.position.x, this.position.y - p.position.y);
+                
+                // Calculate an effective kill range that projects slightly forward based on speed.
+                // This prevents the bird from passing through the bee in a single frame.
+                const currentSpeed = Math.hypot(this.velocity.x, this.velocity.y);
+                const effectiveKillRange = this.settings.killRange + (currentSpeed * 0.5); // The 0.5 is a tuning factor
+
+                if (distance < effectiveKillRange) {
+                    p.isAlive = false;
+                    this.beesCaught++;
+                    // A bird can only catch one bee per frame, so we exit after a successful catch.
+                    return;
+                }
+            }
         }
     }
 
@@ -83,25 +113,31 @@ export class Bird extends Boid {
         }
     }
 
+    /**
+     * Calculates a steering vector towards the closest prey.
+     * This method is now only responsible for movement, not for catching.
+     * @param {Bee[]} prey - An array of nearby bees.
+     * @returns {object} A steering vector {x, y}.
+     */
     hunt(prey) {
         const steering = { x: 0, y: 0 };
         let closestDistance = Infinity, closestPrey = null;
+
         for (const p of prey) {
             if (p.isAlive) {
                 const distance = Math.hypot(this.position.x - p.position.x, this.position.y - p.position.y);
                 if (distance < closestDistance && distance < this.settings.visualRange) {
-                    closestDistance = distance; closestPrey = p;
+                    closestDistance = distance;
+                    closestPrey = p;
                 }
             }
         }
+
         if (closestPrey) {
-            if (closestDistance < this.settings.killRange) {
-                closestPrey.isAlive = false; this.beesCaught++;
-            } else {
-                steering.x = closestPrey.position.x - this.position.x;
-                steering.y = closestPrey.position.y - this.position.y;
-            }
+            steering.x = closestPrey.position.x - this.position.x;
+            steering.y = closestPrey.position.y - this.position.y;
         }
+
         return steering;
     }
 
