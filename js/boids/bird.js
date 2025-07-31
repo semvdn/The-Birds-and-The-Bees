@@ -2,13 +2,14 @@ import { Boid } from './boid.js';
 import { NEST_SETTINGS } from '../presets.js';
 
 export class Bird extends Boid {
-    constructor(x, y, settings, nest) {
+    constructor(x, y, settings, nest, genes) {
         super(x, y, settings);
         this.homeNest = nest; // The bird's original nest
         this.matingNest = null; // The nest the pair agrees to go to
         this.beesCaught = 0;
         this.partner = null;
         this.state = 'HUNTING'; // HUNTING, SEEKING_MATE, PAIRED, GO_TO_NEST
+        this.genes = genes; // Store the genetic makeup of the bird
     }
 
     update(world) {
@@ -138,6 +139,12 @@ export class Bird extends Boid {
     }
 
     resetMating() {
+        if (this.partner) {
+            this.partner.state = 'HUNTING';
+            this.partner.beesCaught = 0;
+            this.partner.partner = null;
+            this.partner.matingNest = null;
+        }
         this.state = 'HUNTING';
         this.beesCaught = 0;
         this.partner = null;
