@@ -1,10 +1,20 @@
-import { GRAVITY, DEATH_FADE_TIME } from '../presets.js';
+import { GRAVITY, DEATH_FADE_TIME, LIFETIME_VARIATION_PERCENT } from '../presets.js';
 
 export class Boid {
     constructor(x, y, settings) {
         this.position = { x, y };
         this.velocity = { x: Math.random() * 2 - 1, y: Math.random() * 2 - 1 };
-        this.settings = settings;
+        
+        // Make a mutable copy of settings to avoid modifying the global preset object
+        this.settings = { ...settings };
+
+        // --- Apply Lifetime Variation ---
+        // Use the passed maxLifetime as a base and apply a random variation
+        const baseLifetime = this.settings.maxLifetime;
+        const variation = (Math.random() - 0.5) * 2 * LIFETIME_VARIATION_PERCENT; // e.g., a value between -0.2 and +0.2
+        this.settings.maxLifetime = baseLifetime * (1 + variation);
+        // ---
+
         this.isAlive = true;
         this.age = 0;
         this.energy = this.settings.initialEnergy;

@@ -17,6 +17,7 @@ export const DEATH_FADE_TIME = 120; // 2 seconds to fade out on the ground
 // --- EVOLUTIONARY CONSTANTS ---
 export const MUTATION_RATE = 0.05; // 15% chance for each gene to mutate
 export const MUTATION_AMOUNT = 0.05; // Mutate by up to 5% of the value's range
+export const LIFETIME_VARIATION_PERCENT = 0.2; // Each boid's max lifetime can vary by +/- 20%
 
 // --- BEE BEHAVIOR CONSTANTS ---
 export const BEE_POPULATION_THRESHOLD = 60; // Below this, bees use simple "closest hive" logic
@@ -48,7 +49,7 @@ export const WEED_PRESETS = [
 ];
 
 // --- BOID SIMULATION CONSTANTS ---
-export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 2 };
+export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 3 };
 export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 5, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
 
 // --- BASE SETTINGS (NON-HERITABLE) ---
@@ -62,7 +63,7 @@ export const BIRD_SETTINGS = {
 };
 export const BEE_SETTINGS = { 
     maxSpeed: 1.65, 
-    nectarCapacity: 2,
+    nectarCapacity: 1,
     gatherTime: 30, // Time in frames to gather nectar from a flower
     maxLifetime: BEE_MAX_LIFETIME_SECONDS * 60, // in frames
     initialEnergy: 100,
