@@ -230,8 +230,17 @@ function animate() {
     }
     for (const bird of birds) { bird.update(world); drawBird(ctx, bird); }
     for (const bee of bees) { bee.update(world); drawBee(ctx, bee); }
+    
     bees = bees.filter(bee => !bee.vanished);
     birds = birds.filter(bird => !bird.vanished);
+
+    // --- Extinction and Restart Logic ---
+    if (birds.length < 2 || bees.length < 2) {
+        frame = 0; // Reset frame counter for graphs
+        initialize(); // Restart the simulation
+        return; // Exit the current animation frame to avoid running logic on the old, now-cleared state
+    }
+
     for (const hive of hives) {
         const costForTwoBees = HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2;
         if (hive.nectar >= costForTwoBees && bees.length < MAX_BEES - 1) {
@@ -395,13 +404,11 @@ function initialize() {
     const maxAttempts = 50;
 
     while (generationAttempts < maxAttempts) {
-        // --- Reset simulation state for reroll ---
         trees = []; 
         hives = []; 
         nests = [];
         let allPotentialHomes = [];
 
-        // --- Generate trees and identify ALL potential home spots ---
         const numTrees = MIN_TREES + Math.floor(Math.random() * (MAX_TREES - MIN_TREES + 1));
         const spacingTrees = canvas.width / numTrees;
         for (let i = 0; i < numTrees; i++) {
@@ -422,7 +429,6 @@ function initialize() {
             for (const bp of plant.branchPoints) {
                 const candidatePos = getStaticBranchPosition(plant, bp);
                 if (Math.abs(candidatePos.y - firstBranchY) > 1.0) {
-                     // Check if it's too close to another valid point ON THE SAME TREE
                     if (!validBranchPointsOnTree.some(p => Math.hypot(p.position.x - candidatePos.x, p.position.y - candidatePos.y) < MIN_HOME_SEPARATION)) {
                         const homeInfo = { position: candidatePos, tree: plant, branchPoint: bp };
                         validBranchPointsOnTree.push(homeInfo);
@@ -432,7 +438,6 @@ function initialize() {
             allPotentialHomes.push(...validBranchPointsOnTree);
         }
 
-        // --- Shuffle and assign homes to be nests or hives ---
         if (allPotentialHomes.length > 0) {
             for (let i = allPotentialHomes.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -464,9 +469,8 @@ function initialize() {
             }
         }
 
-        // --- Validate the generated world ---
         if (hives.length >= 2 && nests.length >= 2) {
-            break; // Success, exit the loop
+            break; 
         }
         
         generationAttempts++;
@@ -476,7 +480,6 @@ function initialize() {
         console.warn(`Failed to generate a world with at least 2 nests and 2 hives after ${maxAttempts} attempts. The simulation may be unbalanced.`);
     }
 
-    // --- Generate undergrowth and initial boid populations ---
     shrubs = []; weeds = []; flowers = [];
     birds = []; bees = [];
 
