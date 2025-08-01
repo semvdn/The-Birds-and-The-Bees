@@ -43,7 +43,7 @@ export const WEED_PRESETS = [
 ];
 
 // --- BOID SIMULATION CONSTANTS ---
-export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 3 };
+export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 2 };
 export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 5, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
 
 // --- BASE SETTINGS (NON-HERITABLE) ---
@@ -53,7 +53,7 @@ export const BIRD_SETTINGS = {
     maxLifetime: BIRD_MAX_LIFETIME_SECONDS * 60, // in frames
     initialEnergy: 200,
     energyFromBee: 150, // Energy gained per bee caught
-    energyDepletionRate: 0.04, // Energy lost per frame
+    energyDepletionRate: 0.1, // Energy lost per frame
 };
 export const BEE_SETTINGS = { 
     maxSpeed: 1.65, 
