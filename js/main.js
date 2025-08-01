@@ -4,7 +4,8 @@ import {
     BIRD_SETTINGS, BEE_SETTINGS, HIVE_SETTINGS, NEST_SETTINGS,
     MAX_BEES, MAX_BIRDS, MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH, MIN_FLOWERS,
     BIRD_GENES, PARENT_PRESETS, MUTATION_RATE, MUTATION_AMOUNT,
-    BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE, GROUND_HEIGHT
+    BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE, GROUND_HEIGHT,
+    BEE_POPULATION_THRESHOLD, HIVE_DANGER_RADIUS, HIVE_DANGER_WEIGHT
 } from './presets.js';
 import { setupPlantData } from './lsystem.js';
 import { preRenderPlant, drawPlant } from './drawing.js';
@@ -351,7 +352,7 @@ function drawTraitEvolutionGraphs(elementId, history, template, titlePrefix) {
 
         layout[`yaxis${i+1}`] = {
             title: trait,
-            range: [template[trait].min, template[trait].max],
+            autorange: true, // This enables automatic scaling of the Y-axis
             gridcolor: '#444'
         };
         layout[`xaxis${i+1}`] = { 
@@ -426,7 +427,7 @@ function initialize() {
                 for (const key in BEE_DNA_TEMPLATE) newHome.dnaPool[key] = 0;
                 newHome.contributorCount = 0; 
                 newHome.knownFlowerLocations = []; 
-                newHome.beesEnRoute = 0; // Add the counter for bees heading to this hive
+                newHome.beesEnRoute = 0;
                 hives.push(newHome); preRenderHive(newHome);
             } else {
                 newHome.occupants = new Set(); newHome.hasEgg = false; newHome.hatchingCountdown = 0;
