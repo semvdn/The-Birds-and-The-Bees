@@ -22,7 +22,6 @@ const overlay = document.getElementById('overlay');
 const beePopulationElement = document.getElementById('bee-population');
 const birdPopulationElement = document.getElementById('bird-population');
 
-// Get references to the collapsible <details> elements containing the plots
 const populationGraphDetails = document.querySelector('#population-graph').closest('details');
 const beeViolinDetails = document.querySelector('#bee-violin-plot').closest('details');
 const birdViolinDetails = document.querySelector('#bird-violin-plot').closest('details');
@@ -34,7 +33,6 @@ let frame = 0;
 let birdGrid, beeGrid;
 let isOverlayVisible = false;
 
-// --- Data for Graphs ---
 let populationHistory = {
     time: [],
     bees: [],
@@ -59,6 +57,22 @@ function blendHexColors(hex1, hex2) {
     return `#${newHex}`;
 }
 
+function mutateHexColor(hex) {
+    if (Math.random() > MUTATION_RATE) return hex;
+
+    let num = parseInt(hex.slice(1), 16);
+    let r = (num >> 16) & 0xFF;
+    let g = (num >> 8) & 0xFF;
+    let b = num & 0xFF;
+
+    const amount = 30; // How much to mutate by
+    r = Math.max(0, Math.min(255, r + Math.floor((Math.random() - 0.5) * amount)));
+    g = Math.max(0, Math.min(255, g + Math.floor((Math.random() - 0.5) * amount)));
+    b = Math.max(0, Math.min(255, b + Math.floor((Math.random() - 0.5) * amount)));
+    
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
 function interpolateVertices(v1, v2, weight) {
     return v1.map((p1, i) => {
         const p2 = v2[i];
@@ -68,30 +82,19 @@ function interpolateVertices(v1, v2, weight) {
     });
 }
 
+function mutateVertices(vertices, ignoreIndices = []) {
+    if (Math.random() > MUTATION_RATE) return vertices;
+    const amount = 0.2; // How much to jitter by
+    return vertices.map((v, i) => {
+        if (ignoreIndices.includes(i)) return v;
+        return [
+            v[0] + (Math.random() - 0.5) * amount,
+            v[1] + (Math.random() - 0.5) * amount
+        ];
+    });
+}
+
 function determineInheritance(genes1, dna1, genes2, dna2) {
-    const weight = Math.random() * 0.6 + 0.2;
-    const newBodyVertices = interpolateVertices(genes1.bodyVertices, genes2.bodyVertices, weight);
-    const newBeakVertices = interpolateVertices(genes1.beakVertices, genes2.beakVertices, weight);
-    const newTailVertices = interpolateVertices(genes1.tailVertices, genes2.tailVertices, weight);
-
-    const palette1 = genes1.palette.colors, palette2 = genes2.palette.colors;
-    const newPaletteColors = {};
-    for (const key in palette1) {
-        newPaletteColors[key] = (key === 'outline' || key === 'beak') ? palette1[key] : blendHexColors(palette1[key], palette2[key]);
-    }
-    const newPalette = { name: "Hybrid", colors: newPaletteColors };
-
-    const inheritedGenes = {
-        palette: newPalette,
-        bodyVertices: newBodyVertices,
-        beakVertices: newBeakVertices,
-        tailVertices: newTailVertices,
-        baseGenes: {
-            baseBeak: Math.random() < 0.5 ? genes1.baseGenes.baseBeak : genes2.baseGenes.baseBeak,
-            baseTail: Math.random() < 0.5 ? genes1.baseGenes.baseTail : genes2.baseGenes.baseTail,
-        }
-    };
-
     const inheritedDna = {};
     for (const key in dna1) {
         const avg = (dna1[key] + dna2[key]) / 2;
@@ -99,8 +102,60 @@ function determineInheritance(genes1, dna1, genes2, dna2) {
         inheritedDna[key] = mutate(avg, template.min, template.max);
     }
 
+    const weight = Math.random();
+    const newBodyVertices = interpolateVertices(genes1.bodyVertices, genes2.bodyVertices, weight);
+
+    let inheritedBaseBeak = Math.random() < 0.5 ? genes1.baseGenes.baseBeak : genes2.baseGenes.baseBeak;
+    let newBeakVertices;
+    if (Math.random() < MUTATION_RATE) {
+        const beakKeys = Object.keys(BIRD_GENES.BEAK_SHAPES);
+        inheritedBaseBeak = BIRD_GENES.BEAK_SHAPES[beakKeys[Math.floor(Math.random() * beakKeys.length)]];
+        newBeakVertices = inheritedBaseBeak.vertices;
+    } else {
+        const interpolatedBeak = interpolateVertices(genes1.beakVertices, genes2.beakVertices, weight);
+        newBeakVertices = mutateVertices(interpolatedBeak, [2]);
+    }
+    
+    let inheritedBaseTail = Math.random() < 0.5 ? genes1.baseGenes.baseTail : genes2.baseGenes.baseTail;
+    let newTailVertices;
+    if (Math.random() < MUTATION_RATE) {
+        const tailKeys = Object.keys(BIRD_GENES.TAIL_SHAPES);
+        inheritedBaseTail = BIRD_GENES.TAIL_SHAPES[tailKeys[Math.floor(Math.random() * tailKeys.length)]];
+        newTailVertices = inheritedBaseTail.vertices(newBodyVertices);
+    } else {
+        const tail1 = genes1.baseGenes.baseTail.vertices(newBodyVertices);
+        const tail2 = genes2.baseGenes.baseTail.vertices(newBodyVertices);
+        const interpolatedTail = interpolateVertices(tail1, tail2, weight);
+        newTailVertices = mutateVertices(interpolatedTail, [0, interpolatedTail.length - 1]);
+    }
+
+    const palette1 = genes1.palette.colors;
+    const palette2 = genes2.palette.colors;
+    const newPaletteColors = {};
+    for (const key in palette1) {
+        if (key === 'outline' || key === 'beak') {
+            newPaletteColors[key] = palette1[key];
+        } else {
+            const blendedColor = blendHexColors(palette1[key], palette2[key]);
+            newPaletteColors[key] = mutateHexColor(blendedColor);
+        }
+    }
+    const newPalette = { name: "Hybrid", colors: newPaletteColors };
+    
+    const inheritedGenes = {
+        palette: newPalette,
+        bodyVertices: newBodyVertices,
+        beakVertices: newBeakVertices,
+        tailVertices: newTailVertices,
+        baseGenes: {
+            baseBeak: inheritedBaseBeak,
+            baseTail: inheritedBaseTail,
+        }
+    };
+
     return { inheritedGenes, inheritedDna };
 }
+
 
 function recalculateHomePositions() {
     const allHomes = [...hives, ...nests];
@@ -127,15 +182,12 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame++;
 
-    // --- Data Gathering & History ---
-    // This now runs regardless of overlay visibility to ensure data is always collected.
     if (frame % 120 === 0) {
-        const currentTime = frame / 60; // Convert frames to seconds
+        const currentTime = frame / 60;
         populationHistory.time.push(currentTime);
         populationHistory.bees.push(bees.length);
         populationHistory.birds.push(birds.length);
         
-        // Limit history to 100 points
         if (populationHistory.time.length > 100) {
             populationHistory.time.shift();
             populationHistory.bees.shift();
@@ -143,7 +195,6 @@ function animate() {
         }
     }
 
-    // Insert only living boids into the grids for interaction calculations.
     birdGrid.clear();
     for (const bird of birds) if (bird.isAlive) birdGrid.insert(bird);
     beeGrid.clear();
@@ -170,7 +221,6 @@ function animate() {
         }
     }
 
-    // Update and draw all boids, letting their internal state handle visuals.
     for (const bird of birds) {
         bird.update(world);
         drawBird(ctx, bird);
@@ -180,11 +230,9 @@ function animate() {
         drawBee(ctx, bee);
     }
     
-    // Filter out boids that have fully vanished.
     bees = bees.filter(bee => !bee.vanished);
     birds = birds.filter(bird => !bird.vanished);
     
-    // --- Bee Reproduction Logic ---
     for (const hive of hives) {
         const costForTwoBees = HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2;
         if (hive.nectar >= costForTwoBees && bees.length < MAX_BEES - 1) {
@@ -221,7 +269,6 @@ function animate() {
         }
     }
 
-    // --- Bird Reproduction Logic ---
     for (const nest of nests) {
         if (nest.occupants.size >= 2 && birds.length < MAX_BIRDS && !nest.hasEgg && nest.nestingCountdown <= 0) {
             nest.nestingCountdown = NEST_SETTINGS.NESTING_TIME_SECONDS * 60;
@@ -259,23 +306,17 @@ function animate() {
     ctx.fillStyle = '#4a5742'; 
     ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
 
-    // --- Overlay Rendering ---
-    // The overlay is only updated if it's visible.
     if (isOverlayVisible) {
-        updateOverlay(); // Call the dedicated rendering function.
+        updateOverlay();
         for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2);
     }
     requestAnimationFrame(animate);
 }
 
-// This function is now ONLY for rendering the overlay. Data gathering is in animate().
 function updateOverlay() {
-    // Update simple text stats every frame the overlay is visible. This is cheap.
     beePopulationElement.textContent = `Bee Population: ${bees.length}`;
     birdPopulationElement.textContent = `Bird Population: ${birds.length}`;
 
-    // Update the complex and slow graphs only on the throttled interval,
-    // AND only if their respective collapsible section is open.
     if (frame % 120 === 0) {
         if (populationGraphDetails.open) {
             drawPopulationGraph();
@@ -289,7 +330,6 @@ function updateOverlay() {
     }
 }
 
-// Optimized plotting function using Plotly.react for better performance.
 function drawPopulationGraph() {
     const graphDiv = document.getElementById('population-graph');
     const beeTrace = {
@@ -317,8 +357,6 @@ function drawPopulationGraph() {
         legend: { x: 0.1, y: 0.9 }
     };
 
-    // Use Plotly.react for efficient updates after the initial render.
-    // It's much faster than newPlot as it only updates what's changed.
     if (graphDiv._fullView) {
         Plotly.react(graphDiv, [beeTrace, birdTrace], layout);
     } else {
@@ -326,11 +364,9 @@ function drawPopulationGraph() {
     }
 }
 
-// Optimized plotting function for violin plots.
 function drawTraitViolinPlots(elementId, population, template, titlePrefix) {
     const graphDiv = document.getElementById(elementId);
     if (population.length < 2) {
-        // If we were showing a plot before, clear it before writing new text.
         if (graphDiv._fullView) {
              Plotly.purge(graphDiv);
         }
@@ -342,7 +378,7 @@ function drawTraitViolinPlots(elementId, population, template, titlePrefix) {
     const plotData = [];
     const layout = {
         title: `${titlePrefix} Trait Distribution`,
-        height: traits.length * 150, // Allocate height for each subplot
+        height: traits.length * 150,
         margin: { t: 40, l: 60, r: 20, b: 20 },
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0.2)',
@@ -357,7 +393,7 @@ function drawTraitViolinPlots(elementId, population, template, titlePrefix) {
 
     traits.forEach((trait, i) => {
         plotData.push({
-            x: population.map(p => p.dna[trait]), // Use x-axis for horizontal violins
+            x: population.map(p => p.dna[trait]),
             name: trait.replace('Factor', ''),
             type: 'violin',
             box: { visible: true },
@@ -377,7 +413,6 @@ function drawTraitViolinPlots(elementId, population, template, titlePrefix) {
         };
     });
 
-    // Use Plotly.react for efficient updates.
     if (graphDiv._fullView) {
         Plotly.react(graphDiv, plotData, layout);
     } else {
@@ -525,21 +560,16 @@ function initialize() {
 
 window.addEventListener('resize', initialize);
 
-// Simplified event listener to prevent the crash.
-// It ONLY toggles the visibility state. The animate loop handles the rest.
 window.addEventListener('keydown', (event) => {
     if (event.key === 'M' || event.key === 'm') {
         isOverlayVisible = !isOverlayVisible;
         overlay.classList.toggle('overlay-hidden', !isOverlayVisible);
         
-        // When hiding the overlay, it's good practice to purge the plots.
-        // This can free up memory and prevent issues if the window is resized while hidden.
         if (!isOverlayVisible) {
             Plotly.purge('population-graph');
             Plotly.purge('bee-violin-plot');
             Plotly.purge('bird-violin-plot');
         } else {
-            // When the overlay becomes visible, update all visible plots immediately.
             if (populationGraphDetails.open) drawPopulationGraph();
             if (beeViolinDetails.open) drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
             if (birdViolinDetails.open) drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
@@ -547,7 +577,6 @@ window.addEventListener('keydown', (event) => {
     }
 });
 
-// Add event listeners to each <details> element to draw the plot when it's opened.
 populationGraphDetails.addEventListener('toggle', (event) => {
     if (event.target.open) {
         drawPopulationGraph();
