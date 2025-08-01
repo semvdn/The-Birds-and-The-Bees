@@ -18,6 +18,11 @@ export const DEATH_FADE_TIME = 120; // 2 seconds to fade out on the ground
 export const MUTATION_RATE = 0.05; // 15% chance for each gene to mutate
 export const MUTATION_AMOUNT = 0.05; // Mutate by up to 5% of the value's range
 
+// --- BEE BEHAVIOR CONSTANTS ---
+export const BEE_POPULATION_THRESHOLD = 60; // Below this, bees use simple "closest hive" logic
+export const HIVE_DANGER_RADIUS = 150; // Radius around a hive to check for birds
+export const HIVE_DANGER_WEIGHT = 5.0; // How much each bird reduces a hive's score
+
 // --- PRESET DEFINITIONS ---
 export const PASTEL_FLOWER_COLORS = ['#ffadad', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#a0c4ff', '#bdb2ff', '#ffc6ff'];
 
@@ -57,7 +62,7 @@ export const BIRD_SETTINGS = {
 };
 export const BEE_SETTINGS = { 
     maxSpeed: 1.65, 
-    nectarCapacity: 1,
+    nectarCapacity: 2,
     gatherTime: 30, // Time in frames to gather nectar from a flower
     maxLifetime: BEE_MAX_LIFETIME_SECONDS * 60, // in frames
     initialEnergy: 100,

@@ -380,14 +380,6 @@ function getStaticBranchPosition(plant, branchPoint) {
     return { x, y };
 }
 
-// Fisher-Yates shuffle algorithm
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-}
-
 function initialize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -399,7 +391,6 @@ function initialize() {
     
     initializeTraitHistory();
 
-    // --- Tree Generation ---
     const numTrees = MIN_TREES + Math.floor(Math.random() * (MAX_TREES - MIN_TREES + 1));
     const spacingTrees = canvas.width / numTrees;
     for (let i = 0; i < numTrees; i++) {
@@ -410,77 +401,50 @@ function initialize() {
         plant.x = (i * spacingTrees) + (spacingTrees / 2) + (Math.random() - 0.5) * (spacingTrees * 0.5);
         preRenderPlant(plant, canvas);
         trees.push(plant);
-    }
-    
-    // --- Home Generation (Nests and Hives) ---
-    const allValidBranchPoints = [];
-    for (const plant of trees) {
+
+        let isHive = Math.random() > 0.5; 
+        const homesOnThisTree = [];
+        
         let firstBranchY = Infinity;
         if (plant.branchPoints.length > 0) {
-            firstBranchY = getStaticBranchPosition(plant, plant.branchPoints[0]).y;
+            const firstBranchPos = getStaticBranchPosition(plant, plant.branchPoints[0]);
+            firstBranchY = firstBranchPos.y;
         }
+
         for (const bp of plant.branchPoints) {
             const candidatePos = getStaticBranchPosition(plant, bp);
-            if (Math.abs(candidatePos.y - firstBranchY) > 1.0) {
-                allValidBranchPoints.push({ plant, branchPoint: bp, position: candidatePos, used: false });
+
+            if (Math.abs(candidatePos.y - firstBranchY) < 1.0) {
+                continue; 
             }
-        }
-    }
-    shuffle(allValidBranchPoints);
 
-    const numNestsToGenerate = 3 + Math.floor(Math.random() * 2); // 3 or 4
-    const numHivesToGenerate = 3 + Math.floor(Math.random() * 2); // 3 or 4
-    const placedHomes = [];
-
-    // Place Nests
-    let nestsPlaced = 0;
-    for (const point of allValidBranchPoints) {
-        if (nestsPlaced >= numNestsToGenerate) break;
-        const isTooClose = placedHomes.some(h => Math.hypot(point.position.x - h.position.x, point.position.y - h.position.y) < MIN_HOME_SEPARATION);
-        if (!isTooClose) {
-            const newNest = { 
-                position: point.position, tree: point.plant, branchPoint: point.branchPoint,
-                occupants: new Set(), hasEgg: false, hatchingCountdown: 0, nestingCountdown: 0,
-                parentGenes: [], parentDna: [], isAvailable: true
-            };
-            const nestRadius = 15; newNest.radius = nestRadius; newNest.twigs = [];
-            const numTwigs = 80; const brownPalette = ['#8B5A2B', '#654321', '#5C4033', '#A0522D'];
-            for (let k = 0; k < numTwigs; k++) {
-                const angle1 = (10 + Math.random() * 160) * (Math.PI / 180), angle2 = angle1 + (Math.random() - 0.5) * 0.9, r1 = nestRadius * (0.8 + Math.random() * 0.4), r2 = nestRadius * (0.8 + Math.random() * 0.4);
-                const twig = { x1: Math.cos(angle1) * r1, y1: Math.sin(angle1) * r1, x2: Math.cos(angle2) * r2, y2: Math.sin(angle2) * r2, color: brownPalette[Math.floor(Math.random() * brownPalette.length)] };
-                twig.cpX = (twig.x1 + twig.x2) / 2 + (Math.random() - 0.5) * 10; twig.cpY = (twig.y1 + twig.y2) / 2 + (Math.random() - 0.5) * 5;
-                newNest.twigs.push(twig);
+            if (homesOnThisTree.some(h => Math.hypot(candidatePos.x - h.position.x, candidatePos.y - h.position.y) < MIN_HOME_SEPARATION)) continue;
+            
+            const newHome = { position: candidatePos, tree: plant, branchPoint: bp };
+            if (isHive) {
+                newHome.nectar = 0; newHome.dnaPool = {};
+                for (const key in BEE_DNA_TEMPLATE) newHome.dnaPool[key] = 0;
+                newHome.contributorCount = 0; 
+                newHome.knownFlowerLocations = []; 
+                newHome.beesEnRoute = 0; // Add the counter for bees heading to this hive
+                hives.push(newHome); preRenderHive(newHome);
+            } else {
+                newHome.occupants = new Set(); newHome.hasEgg = false; newHome.hatchingCountdown = 0;
+                newHome.nestingCountdown = 0; newHome.parentGenes = []; newHome.parentDna = [];
+                newHome.isAvailable = true;
+                const nestRadius = 15; newHome.radius = nestRadius; newHome.twigs = [];
+                const numTwigs = 80; const brownPalette = ['#8B5A2B', '#654321', '#5C4033', '#A0522D'];
+                for (let k = 0; k < numTwigs; k++) {
+                    const angle1 = (10 + Math.random() * 160) * (Math.PI / 180), angle2 = angle1 + (Math.random() - 0.5) * 0.9, r1 = nestRadius * (0.8 + Math.random() * 0.4), r2 = nestRadius * (0.8 + Math.random() * 0.4);
+                    const twig = { x1: Math.cos(angle1) * r1, y1: Math.sin(angle1) * r1, x2: Math.cos(angle2) * r2, y2: Math.sin(angle2) * r2, color: brownPalette[Math.floor(Math.random() * brownPalette.length)] };
+                    twig.cpX = (twig.x1 + twig.x2) / 2 + (Math.random() - 0.5) * 10; twig.cpY = (twig.y1 + twig.y2) / 2 + (Math.random() - 0.5) * 5;
+                    newHome.twigs.push(twig);
+                }
+                nests.push(newHome); preRenderNest(newHome);
             }
-            preRenderNest(newNest);
-            nests.push(newNest);
-            placedHomes.push(newNest);
-            point.used = true;
-            nestsPlaced++;
+            homesOnThisTree.push(newHome); isHive = !isHive;
         }
     }
-
-    // Place Hives
-    let hivesPlaced = 0;
-    for (const point of allValidBranchPoints) {
-        if (hivesPlaced >= numHivesToGenerate) break;
-        if (point.used) continue;
-        const isTooClose = placedHomes.some(h => Math.hypot(point.position.x - h.position.x, point.position.y - h.position.y) < MIN_HOME_SEPARATION);
-        if (!isTooClose) {
-            const newHive = { 
-                position: point.position, tree: point.plant, branchPoint: point.branchPoint,
-                nectar: 0, dnaPool: {}, contributorCount: 0, knownFlowerLocations: []
-            };
-            for (const key in BEE_DNA_TEMPLATE) newHive.dnaPool[key] = 0;
-            preRenderHive(newHive);
-            hives.push(newHive);
-            placedHomes.push(newHive);
-            point.used = true;
-            hivesPlaced++;
-        }
-    }
-
-
-    // --- Shrub and Weed Generation ---
     const flowerPresets = SHRUB_PRESETS.filter(p => p.type === 'flower');
     const numShrubs = 15; const spacingShrubs = canvas.width / numShrubs;
     for (let i = 0; i < numShrubs; i++) {
@@ -512,8 +476,6 @@ function initialize() {
         plant.x = (i * spacingWeeds) + (spacingWeeds / 2) + (Math.random() - 0.5) * spacingWeeds;
         preRenderPlant(plant, canvas); weeds.push(plant);
     }
-
-    // --- Initial Population ---
     if (nests.length > 0) {
         const initialBirdDna = {};
         for (const key in BIRD_DNA_TEMPLATE) initialBirdDna[key] = BIRD_DNA_TEMPLATE[key].initial;
