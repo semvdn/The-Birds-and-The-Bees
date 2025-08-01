@@ -234,11 +234,13 @@ function animate() {
     bees = bees.filter(bee => !bee.vanished);
     birds = birds.filter(bird => !bird.vanished);
 
-    // --- Extinction and Restart Logic ---
     if (birds.length < 2 || bees.length < 2) {
-        frame = 0; // Reset frame counter for graphs
-        initialize(); // Restart the simulation
-        return; // Exit the current animation frame to avoid running logic on the old, now-cleared state
+        frame = 0;
+        initialize();
+        // The crucial change: After re-initializing, we must request the *next* animation frame
+        // to kickstart the new simulation's loop. Then, we exit the current (obsolete) frame.
+        requestAnimationFrame(animate); 
+        return; 
     }
 
     for (const hive of hives) {
