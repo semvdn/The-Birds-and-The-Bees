@@ -62,7 +62,7 @@ export const BIRD_SETTINGS = {
     energyDepletionRate: 0.04, // Energy lost per frame
 };
 export const BEE_SETTINGS = { 
-    maxSpeed: 1.65, 
+    maxSpeed: 1.75, 
     nectarCapacity: 2,
     gatherTime: 30, // Time in frames to gather nectar from a flower
     maxLifetime: BEE_MAX_LIFETIME_SECONDS * 60, // in frames
