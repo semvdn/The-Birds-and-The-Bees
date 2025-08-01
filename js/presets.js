@@ -31,8 +31,8 @@ export const TREE_PRESETS = [
 export const SHRUB_PRESETS = [
     { type: 'leafy', rules: { 'X': 'F-[[XL]+XL]+F[+FXL]-XL', 'F': 'FF' }, iterations: 4, angle: 30, initialThickness: 4, barkColor: '#4c956c', leafColor: '#fefee3', leafShape: 'oval' },
     { type: 'leafy', rules: { 'X': 'F[+XL][-XL]FXL', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#5fa8d3', leafColor: '#f2f2f2', leafShape: 'willow' },
-    { type: 'flower', nectar: 20, nectarRegen: 0.20, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
-    { type: 'flower', nectar: 25, nectarRegen: 0.25, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
+    { type: 'flower', nectar: 20, nectarRegen: 2.0, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
+    { type: 'flower', nectar: 25, nectarRegen: 2.5, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
 ];
 
 export const WEED_PRESETS = [
@@ -43,7 +43,7 @@ export const WEED_PRESETS = [
 ];
 
 // --- BOID SIMULATION CONSTANTS ---
-export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 1 };
+export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 3 };
 export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 5, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
 
 // --- BASE SETTINGS (NON-HERITABLE) ---
@@ -53,13 +53,12 @@ export const BIRD_SETTINGS = {
     maxLifetime: BIRD_MAX_LIFETIME_SECONDS * 60, // in frames
     initialEnergy: 200,
     energyFromBee: 150, // Energy gained per bee caught
-    energyDepletionRate: 0.1, // Energy lost per frame
+    energyDepletionRate: 0.04, // Energy lost per frame
 };
 export const BEE_SETTINGS = { 
     maxSpeed: 1.65, 
     nectarCapacity: 1,
     gatherTime: 30, // Time in frames to gather nectar from a flower
-    returnFactor: 0.006, // Stronger steering force when returning to hive
     maxLifetime: BEE_MAX_LIFETIME_SECONDS * 60, // in frames
     initialEnergy: 100,
     energyFromNectar: 50, // Energy gained per gathering action
@@ -85,7 +84,8 @@ export const BEE_DNA_TEMPLATE = {
     alignmentFactor:    { initial: 0.03,min: 0.01,max: 0.08},
     cohesionFactor:     { initial: 0.002,min: 0.0005,max:0.005},
     turnFactor:         { initial: 0.3, min: 0.1, max: 0.5 },
-    evadeFactor:        { initial: 0.01,min: 0.005,max:0.03 }
+    evadeFactor:        { initial: 0.01,min: 0.005,max:0.03 },
+    returnFactor:       { initial: 0.006, min: 0.001, max: 0.02 }
 };
 
 

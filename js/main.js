@@ -33,11 +33,20 @@ let frame = 0;
 let birdGrid, beeGrid;
 let isOverlayVisible = false;
 
-let populationHistory = {
-    time: [],
-    bees: [],
-    birds: []
-};
+// --- Data for Graphs ---
+let populationHistory = { time: [], bees: [], birds: [] };
+let traitHistory = {};
+
+
+function initializeTraitHistory() {
+    traitHistory = { time: [], birds: {}, bees: {} };
+    Object.keys(BIRD_DNA_TEMPLATE).forEach(trait => {
+        traitHistory.birds[trait] = { mean: [], min: [], max: [] };
+    });
+    Object.keys(BEE_DNA_TEMPLATE).forEach(trait => {
+        traitHistory.bees[trait] = { mean: [], min: [], max: [] };
+    });
+}
 
 function mutate(value, min, max) {
     if (Math.random() < MUTATION_RATE) {
@@ -59,17 +68,12 @@ function blendHexColors(hex1, hex2) {
 
 function mutateHexColor(hex) {
     if (Math.random() > MUTATION_RATE) return hex;
-
     let num = parseInt(hex.slice(1), 16);
-    let r = (num >> 16) & 0xFF;
-    let g = (num >> 8) & 0xFF;
-    let b = num & 0xFF;
-
-    const amount = 30; // How much to mutate by
+    let r = (num >> 16) & 0xFF, g = (num >> 8) & 0xFF, b = num & 0xFF;
+    const amount = 30;
     r = Math.max(0, Math.min(255, r + Math.floor((Math.random() - 0.5) * amount)));
     g = Math.max(0, Math.min(255, g + Math.floor((Math.random() - 0.5) * amount)));
     b = Math.max(0, Math.min(255, b + Math.floor((Math.random() - 0.5) * amount)));
-    
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
@@ -84,13 +88,10 @@ function interpolateVertices(v1, v2, weight) {
 
 function mutateVertices(vertices, ignoreIndices = []) {
     if (Math.random() > MUTATION_RATE) return vertices;
-    const amount = 0.2; // How much to jitter by
+    const amount = 0.2;
     return vertices.map((v, i) => {
         if (ignoreIndices.includes(i)) return v;
-        return [
-            v[0] + (Math.random() - 0.5) * amount,
-            v[1] + (Math.random() - 0.5) * amount
-        ];
+        return [ v[0] + (Math.random() - 0.5) * amount, v[1] + (Math.random() - 0.5) * amount ];
     });
 }
 
@@ -101,10 +102,8 @@ function determineInheritance(genes1, dna1, genes2, dna2) {
         const template = BIRD_DNA_TEMPLATE[key];
         inheritedDna[key] = mutate(avg, template.min, template.max);
     }
-
     const weight = Math.random();
     const newBodyVertices = interpolateVertices(genes1.bodyVertices, genes2.bodyVertices, weight);
-
     let inheritedBaseBeak = Math.random() < 0.5 ? genes1.baseGenes.baseBeak : genes2.baseGenes.baseBeak;
     let newBeakVertices;
     if (Math.random() < MUTATION_RATE) {
@@ -115,7 +114,6 @@ function determineInheritance(genes1, dna1, genes2, dna2) {
         const interpolatedBeak = interpolateVertices(genes1.beakVertices, genes2.beakVertices, weight);
         newBeakVertices = mutateVertices(interpolatedBeak, [2]);
     }
-    
     let inheritedBaseTail = Math.random() < 0.5 ? genes1.baseGenes.baseTail : genes2.baseGenes.baseTail;
     let newTailVertices;
     if (Math.random() < MUTATION_RATE) {
@@ -128,34 +126,22 @@ function determineInheritance(genes1, dna1, genes2, dna2) {
         const interpolatedTail = interpolateVertices(tail1, tail2, weight);
         newTailVertices = mutateVertices(interpolatedTail, [0, interpolatedTail.length - 1]);
     }
-
-    const palette1 = genes1.palette.colors;
-    const palette2 = genes2.palette.colors;
+    const palette1 = genes1.palette.colors, palette2 = genes2.palette.colors;
     const newPaletteColors = {};
     for (const key in palette1) {
-        if (key === 'outline' || key === 'beak') {
-            newPaletteColors[key] = palette1[key];
-        } else {
+        if (key === 'outline' || key === 'beak') { newPaletteColors[key] = palette1[key]; } 
+        else {
             const blendedColor = blendHexColors(palette1[key], palette2[key]);
             newPaletteColors[key] = mutateHexColor(blendedColor);
         }
     }
     const newPalette = { name: "Hybrid", colors: newPaletteColors };
-    
     const inheritedGenes = {
-        palette: newPalette,
-        bodyVertices: newBodyVertices,
-        beakVertices: newBeakVertices,
-        tailVertices: newTailVertices,
-        baseGenes: {
-            baseBeak: inheritedBaseBeak,
-            baseTail: inheritedBaseTail,
-        }
+        palette: newPalette, bodyVertices: newBodyVertices, beakVertices: newBeakVertices,
+        tailVertices: newTailVertices, baseGenes: { baseBeak: inheritedBaseBeak, baseTail: inheritedBaseTail, }
     };
-
     return { inheritedGenes, inheritedDna };
 }
-
 
 function recalculateHomePositions() {
     const allHomes = [...hives, ...nests];
@@ -193,26 +179,57 @@ function animate() {
             populationHistory.bees.shift();
             populationHistory.birds.shift();
         }
+
+        traitHistory.time.push(currentTime);
+        Object.keys(BIRD_DNA_TEMPLATE).forEach(trait => {
+            const values = birds.filter(b => b.isAlive).map(b => b.dna[trait]);
+            if (values.length > 0) {
+                traitHistory.birds[trait].mean.push(values.reduce((a, b) => a + b, 0) / values.length);
+                traitHistory.birds[trait].min.push(Math.min(...values));
+                traitHistory.birds[trait].max.push(Math.max(...values));
+            } else {
+                traitHistory.birds[trait].mean.push(null);
+                traitHistory.birds[trait].min.push(null);
+                traitHistory.birds[trait].max.push(null);
+            }
+        });
+        Object.keys(BEE_DNA_TEMPLATE).forEach(trait => {
+            const values = bees.filter(b => b.isAlive).map(b => b.dna[trait]);
+            if (values.length > 0) {
+                traitHistory.bees[trait].mean.push(values.reduce((a, b) => a + b, 0) / values.length);
+                traitHistory.bees[trait].min.push(Math.min(...values));
+                traitHistory.bees[trait].max.push(Math.max(...values));
+            } else {
+                traitHistory.bees[trait].mean.push(null);
+                traitHistory.bees[trait].min.push(null);
+                traitHistory.bees[trait].max.push(null);
+            }
+        });
+
+        if (traitHistory.time.length > 100) {
+            traitHistory.time.shift();
+            Object.values(traitHistory.birds).forEach(stats => {
+                stats.mean.shift(); stats.min.shift(); stats.max.shift();
+            });
+            Object.values(traitHistory.bees).forEach(stats => {
+                stats.mean.shift(); stats.min.shift(); stats.max.shift();
+            });
+        }
     }
 
     birdGrid.clear();
     for (const bird of birds) if (bird.isAlive) birdGrid.insert(bird);
     beeGrid.clear();
     for (const bee of bees) if (bee.isAlive) beeGrid.insert(bee);
-
     recalculateHomePositions();
-
     const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid, groundHeight: GROUND_HEIGHT };
-    
     for (const flower of flowers) {
         for (const petal of flower.petalPoints) {
             petal.nectar = Math.min(1, petal.nectar + 0.0005);
         }
     }
-
     const allPlants = [...trees, ...shrubs, ...weeds];
     allPlants.sort((a, b) => b.x - a.x);
-
     for (const plant of allPlants) {
         drawPlant(plant, ctx, canvas, frame);
         if (plant.plantType === 'tree') {
@@ -220,60 +237,40 @@ function animate() {
             for (const hive of hives) if (hive.tree === plant) drawHive(ctx, hive);
         }
     }
-
-    for (const bird of birds) {
-        bird.update(world);
-        drawBird(ctx, bird);
-    }
-    for (const bee of bees) {
-        bee.update(world);
-        drawBee(ctx, bee);
-    }
-    
+    for (const bird of birds) { bird.update(world); drawBird(ctx, bird); }
+    for (const bee of bees) { bee.update(world); drawBee(ctx, bee); }
     bees = bees.filter(bee => !bee.vanished);
     birds = birds.filter(bird => !bird.vanished);
-    
     for (const hive of hives) {
         const costForTwoBees = HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2;
         if (hive.nectar >= costForTwoBees && bees.length < MAX_BEES - 1) {
             hive.nectar -= costForTwoBees;
             const baseBeeDna = {};
             if (hive.contributorCount > 0) {
-                for (const key in BEE_DNA_TEMPLATE) {
-                    baseBeeDna[key] = hive.dnaPool[key] / hive.contributorCount;
-                }
+                for (const key in BEE_DNA_TEMPLATE) { baseBeeDna[key] = hive.dnaPool[key] / hive.contributorCount; }
             } else { 
-                for (const key in BEE_DNA_TEMPLATE) {
-                    baseBeeDna[key] = BEE_DNA_TEMPLATE[key].initial;
-                }
+                for (const key in BEE_DNA_TEMPLATE) { baseBeeDna[key] = BEE_DNA_TEMPLATE[key].initial; }
             }
-
             const bee1Dna = {};
             for (const key in baseBeeDna) {
                 const template = BEE_DNA_TEMPLATE[key];
                 bee1Dna[key] = mutate(baseBeeDna[key], template.min, template.max);
             }
             bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee1Dna));
-
             const bee2Dna = {};
             for (const key in baseBeeDna) {
                 const template = BEE_DNA_TEMPLATE[key];
                 bee2Dna[key] = mutate(baseBeeDna[key], template.min, template.max);
             }
             bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee2Dna));
-
             hive.contributorCount = 0;
-            for (const key in hive.dnaPool) {
-                hive.dnaPool[key] = 0;
-            }
+            for (const key in hive.dnaPool) { hive.dnaPool[key] = 0; }
         }
     }
-
     for (const nest of nests) {
         if (nest.occupants.size >= 2 && birds.length < MAX_BIRDS && !nest.hasEgg && nest.nestingCountdown <= 0) {
             nest.nestingCountdown = NEST_SETTINGS.NESTING_TIME_SECONDS * 60;
         }
-
         if (nest.occupants.size >= 2 && nest.nestingCountdown > 0) {
             nest.nestingCountdown--;
             if (nest.nestingCountdown <= 0) {
@@ -286,26 +283,20 @@ function animate() {
                 nest.occupants.clear();
             }
         }
-
         if (nest.hasEgg) {
             nest.hatchingCountdown--;
             if (nest.hatchingCountdown <= 0) {
                 const { inheritedGenes, inheritedDna } = determineInheritance(
-                    nest.parentGenes[0], nest.parentDna[0], 
-                    nest.parentGenes[1], nest.parentDna[1]
+                    nest.parentGenes[0], nest.parentDna[0], nest.parentGenes[1], nest.parentDna[1]
                 );
                 const newBird = new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, inheritedGenes, inheritedDna);
                 birds.push(newBird);
-                nest.hasEgg = false;
-                nest.parentGenes = [];
-                nest.parentDna = [];
+                nest.hasEgg = false; nest.parentGenes = []; nest.parentDna = [];
             }
         }
     }
-
     ctx.fillStyle = '#4a5742'; 
     ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
-
     if (isOverlayVisible) {
         updateOverlay();
         for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2);
@@ -316,110 +307,66 @@ function animate() {
 function updateOverlay() {
     beePopulationElement.textContent = `Bee Population: ${bees.length}`;
     birdPopulationElement.textContent = `Bird Population: ${birds.length}`;
-
     if (frame % 120 === 0) {
-        if (populationGraphDetails.open) {
-            drawPopulationGraph();
-        }
-        if (beeViolinDetails.open) {
-            drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
-        }
-        if (birdViolinDetails.open) {
-            drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
-        }
+        if (populationGraphDetails.open) { drawPopulationGraph(); }
+        if (beeViolinDetails.open) { drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee'); }
+        if (birdViolinDetails.open) { drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird'); }
     }
 }
 
 function drawPopulationGraph() {
     const graphDiv = document.getElementById('population-graph');
-    const beeTrace = {
-        x: populationHistory.time,
-        y: populationHistory.bees,
-        mode: 'lines',
-        name: 'Bees',
-        line: { color: '#FFC300' }
-    };
-    const birdTrace = {
-        x: populationHistory.time,
-        y: populationHistory.birds,
-        mode: 'lines',
-        name: 'Birds',
-        line: { color: '#87CEFA' }
-    };
+    const beeTrace = { x: populationHistory.time, y: populationHistory.bees, mode: 'lines', name: 'Bees', line: { color: '#FFC300' } };
+    const birdTrace = { x: populationHistory.time, y: populationHistory.birds, mode: 'lines', name: 'Birds', line: { color: '#87CEFA' } };
     const layout = {
-        title: 'Population Over Time',
-        xaxis: { title: 'Time (s)', gridcolor: '#444' },
-        yaxis: { title: 'Population', gridcolor: '#444' },
-        margin: { t: 30, l: 40, r: 20, b: 30 },
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0.2)',
-        font: { color: 'white' },
-        legend: { x: 0.1, y: 0.9 }
+        title: 'Population Over Time', xaxis: { title: 'Time (s)', gridcolor: '#444' }, yaxis: { title: 'Population', gridcolor: '#444' },
+        margin: { t: 30, l: 40, r: 20, b: 30 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0.2)',
+        font: { color: 'white' }, legend: { x: 0.1, y: 0.9 }
     };
-
-    if (graphDiv._fullView) {
-        Plotly.react(graphDiv, [beeTrace, birdTrace], layout);
-    } else {
-        Plotly.newPlot(graphDiv, [beeTrace, birdTrace], layout, {responsive: true});
-    }
+    if (graphDiv._fullView) { Plotly.react(graphDiv, [beeTrace, birdTrace], layout); }
+    else { Plotly.newPlot(graphDiv, [beeTrace, birdTrace], layout, {responsive: true}); }
 }
 
-function drawTraitViolinPlots(elementId, population, template, titlePrefix) {
+function drawTraitEvolutionGraphs(elementId, history, template, titlePrefix) {
     const graphDiv = document.getElementById(elementId);
-    if (population.length < 2) {
-        if (graphDiv._fullView) {
-             Plotly.purge(graphDiv);
-        }
+    const traits = Object.keys(template);
+    if (traitHistory.time.length < 2) {
+        if (graphDiv._fullView) { Plotly.purge(graphDiv); }
         graphDiv.innerHTML = `<p style="padding: 10px;">Not enough data for ${titlePrefix.toLowerCase()} trait plots.</p>`;
         return;
     }
-
-    const traits = ['visualRange', 'separationFactor', 'alignmentFactor', 'cohesionFactor'];
     const plotData = [];
     const layout = {
-        title: `${titlePrefix} Trait Distribution`,
-        height: traits.length * 150,
+        title: `${titlePrefix} Trait Evolution Over Time`,
+        height: traits.length * 160,
         margin: { t: 40, l: 60, r: 20, b: 20 },
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0.2)',
         font: { color: 'white' },
         showlegend: false,
-        grid: {
-            rows: traits.length,
-            columns: 1,
-            pattern: 'independent'
-        }
+        grid: { rows: traits.length, columns: 1, pattern: 'independent' }
     };
 
     traits.forEach((trait, i) => {
-        plotData.push({
-            x: population.map(p => p.dna[trait]),
-            name: trait.replace('Factor', ''),
-            type: 'violin',
-            box: { visible: true },
-            meanline: { visible: true },
-            xaxis: `x${i + 1}`,
-            yaxis: `y${i + 1}`
-        });
+        const { mean, min, max } = history[trait];
+        const time = traitHistory.time;
+        const color = titlePrefix === 'Bee' ? '#FFC300' : '#87CEFA';
+        
+        plotData.push({ x: time, y: max, mode: 'lines', line: {width: 0}, showlegend: false, xaxis: `x${i+1}`, yaxis: `y${i+1}` });
+        plotData.push({ x: time, y: min, mode: 'lines', line: {width: 0}, fill: 'tonexty', fillcolor: 'rgba(255,255,255,0.1)', showlegend: false, xaxis: `x${i+1}`, yaxis: `y${i+1}` });
+        plotData.push({ x: time, y: mean, mode: 'lines', line: {color: color}, name: trait, xaxis: `x${i+1}`, yaxis: `y${i+1}` });
 
-        const { min, max } = template[trait];
-        layout[`xaxis${i + 1}`] = {
+        layout[`yaxis${i+1}`] = {
             title: trait,
-            range: [min, max],
+            range: [template[trait].min, template[trait].max],
             gridcolor: '#444'
         };
-        layout[`yaxis${i + 1}`] = {
-             showticklabels: false
-        };
+        layout[`xaxis${i+1}`] = { showticklabels: i === traits.length - 1 };
     });
 
-    if (graphDiv._fullView) {
-        Plotly.react(graphDiv, plotData, layout);
-    } else {
-        Plotly.newPlot(graphDiv, plotData, layout, {responsive: true});
-    }
+    if (graphDiv._fullView) { Plotly.react(graphDiv, plotData, layout); }
+    else { Plotly.newPlot(graphDiv, plotData, layout, {responsive: true}); }
 }
-
 
 function getStaticBranchPosition(plant, branchPoint) {
     let x = plant.x, y = canvas.height, angle = -90 * (Math.PI / 180), length = plant.length * plant.scale;
@@ -440,14 +387,14 @@ function getStaticBranchPosition(plant, branchPoint) {
 function initialize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    
     const cellSize = 100;
     birdGrid = new Grid(canvas.width, canvas.height, cellSize);
     beeGrid = new Grid(canvas.width, canvas.height, cellSize);
-
     trees = []; shrubs = []; weeds = []; flowers = [];
     birds = []; bees = []; hives = []; nests = [];
     
+    initializeTraitHistory(); // Set up the history object
+
     const numTrees = MIN_TREES + Math.floor(Math.random() * (MAX_TREES - MIN_TREES + 1));
     const spacingTrees = canvas.width / numTrees;
     for (let i = 0; i < numTrees; i++) {
@@ -458,22 +405,16 @@ function initialize() {
         plant.x = (i * spacingTrees) + (spacingTrees / 2) + (Math.random() - 0.5) * (spacingTrees * 0.5);
         preRenderPlant(plant, canvas);
         trees.push(plant);
-
         let isHive = Math.random() > 0.5; const homesOnThisTree = [];
         for (const bp of plant.branchPoints) {
             const candidatePos = getStaticBranchPosition(plant, bp);
-            let tooClose = homesOnThisTree.some(existingHome => Math.hypot(candidatePos.x - existingHome.position.x, candidatePos.y - existingHome.position.y) < MIN_HOME_SEPARATION);
-            if (tooClose) continue;
-
+            if (homesOnThisTree.some(h => Math.hypot(candidatePos.x - h.position.x, candidatePos.y - h.position.y) < MIN_HOME_SEPARATION)) continue;
             const newHome = { position: candidatePos, tree: plant, branchPoint: bp };
             if (isHive) {
-                newHome.nectar = 0;
-                newHome.dnaPool = {};
+                newHome.nectar = 0; newHome.dnaPool = {};
                 for (const key in BEE_DNA_TEMPLATE) newHome.dnaPool[key] = 0;
-                newHome.contributorCount = 0;
-                newHome.knownFlowerLocations = []; 
-                hives.push(newHome);
-                preRenderHive(newHome);
+                newHome.contributorCount = 0; newHome.knownFlowerLocations = []; 
+                hives.push(newHome); preRenderHive(newHome);
             } else {
                 newHome.occupants = new Set(); newHome.hasEgg = false; newHome.hatchingCountdown = 0; newHome.nestingCountdown = 0; newHome.parentGenes = []; newHome.parentDna = [];
                 const nestRadius = 15; newHome.radius = nestRadius; newHome.twigs = [];
@@ -484,24 +425,15 @@ function initialize() {
                     twig.cpX = (twig.x1 + twig.x2) / 2 + (Math.random() - 0.5) * 10; twig.cpY = (twig.y1 + twig.y2) / 2 + (Math.random() - 0.5) * 5;
                     newHome.twigs.push(twig);
                 }
-                nests.push(newHome);
-                preRenderNest(newHome);
+                nests.push(newHome); preRenderNest(newHome);
             }
             homesOnThisTree.push(newHome); isHive = !isHive;
         }
     }
-
     const flowerPresets = SHRUB_PRESETS.filter(p => p.type === 'flower');
-    const numShrubs = 15; 
-    const spacingShrubs = canvas.width / numShrubs;
+    const numShrubs = 15; const spacingShrubs = canvas.width / numShrubs;
     for (let i = 0; i < numShrubs; i++) {
-        let preset;
-        if (i < MIN_FLOWERS && flowerPresets.length > 0) {
-            preset = flowerPresets[Math.floor(Math.random() * flowerPresets.length)];
-        } else {
-            preset = SHRUB_PRESETS[Math.floor(Math.random() * SHRUB_PRESETS.length)];
-        }
-
+        let preset = (i < MIN_FLOWERS && flowerPresets.length > 0) ? flowerPresets[Math.floor(Math.random() * flowerPresets.length)] : SHRUB_PRESETS[Math.floor(Math.random() * SHRUB_PRESETS.length)];
         const plant = setupPlantData(preset, 'shrub');
         const targetHeight = canvas.height * (0.15 + Math.random() * 0.1);
         plant.scale = targetHeight / plant.unscaledHeight;
@@ -520,7 +452,6 @@ function initialize() {
         }
         shrubs.push(plant);
     }
-
     const numWeeds = 40; const spacingWeeds = canvas.width / numWeeds;
     for (let i = 0; i < numWeeds; i++) {
         const preset = WEED_PRESETS[Math.floor(Math.random() * WEED_PRESETS.length)];
@@ -530,7 +461,6 @@ function initialize() {
         plant.x = (i * spacingWeeds) + (spacingWeeds / 2) + (Math.random() - 0.5) * spacingWeeds;
         preRenderPlant(plant, canvas); weeds.push(plant);
     }
-
     if (nests.length > 0) {
         const initialBirdDna = {};
         for (const key in BIRD_DNA_TEMPLATE) initialBirdDna[key] = BIRD_DNA_TEMPLATE[key].initial;
@@ -539,8 +469,7 @@ function initialize() {
             const parentPreset = PARENT_PRESETS[i % PARENT_PRESETS.length];
             const bodyVertices = BIRD_GENES.BODY_SHAPES[parentPreset.genes.baseBeak.body].vertices;
             const birdGenes = {
-                palette: parentPreset.genes.palette,
-                bodyVertices: bodyVertices,
+                palette: parentPreset.genes.palette, bodyVertices: bodyVertices,
                 beakVertices: parentPreset.genes.baseBeak.vertices,
                 tailVertices: parentPreset.genes.baseTail.vertices(bodyVertices),
                 baseGenes: parentPreset.genes
@@ -559,41 +488,25 @@ function initialize() {
 }
 
 window.addEventListener('resize', initialize);
-
 window.addEventListener('keydown', (event) => {
     if (event.key === 'M' || event.key === 'm') {
         isOverlayVisible = !isOverlayVisible;
         overlay.classList.toggle('overlay-hidden', !isOverlayVisible);
-        
         if (!isOverlayVisible) {
             Plotly.purge('population-graph');
             Plotly.purge('bee-violin-plot');
             Plotly.purge('bird-violin-plot');
         } else {
             if (populationGraphDetails.open) drawPopulationGraph();
-            if (beeViolinDetails.open) drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
-            if (birdViolinDetails.open) drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
+            if (beeViolinDetails.open) drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee');
+            if (birdViolinDetails.open) drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird');
         }
     }
 });
 
-populationGraphDetails.addEventListener('toggle', (event) => {
-    if (event.target.open) {
-        drawPopulationGraph();
-    }
-});
-
-beeViolinDetails.addEventListener('toggle', (event) => {
-    if (event.target.open) {
-        drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
-    }
-});
-
-birdViolinDetails.addEventListener('toggle', (event) => {
-    if (event.target.open) {
-        drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
-    }
-});
+populationGraphDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawPopulationGraph(); } });
+beeViolinDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee'); } });
+birdViolinDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird'); } });
 
 initialize();
 animate();
