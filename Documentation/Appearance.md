@@ -22,6 +22,14 @@ When two birds reproduce, their offspring's appearance is a blend of their paren
 
 2.  **Color Blending:** The offspring's color palette is created by taking each color from the parents' palettes (e.g., the `wing_top` color) and computationally blending them to find the average color.
 
+    ![Heritability of appearance between two parent birds and their offspring](assets/APPEARANCE_HERITABILITY.jpeg)
+
+## Mutation
+
+While inheritance and blending create new combinations of traits, mutation introduces entirely new variations into the gene pool. A small, random mutation is applied to the offspring's genes, which can result in novel shapes or colors not present in either parent. This allows for the evolution of new appearances over time.
+
+![Example of a mutation causing a new appearance](assets/APPEARANCE_MUTATION.jpeg)
+
 ## Drawing the Bird Model
 
 The final appearance is rendered in the `drawBirdModel` function (`drawing.js`):
@@ -29,6 +37,6 @@ The final appearance is rendered in the `drawBirdModel` function (`drawing.js`):
 1.  The bird's geometry is defined as a series of closed polygons (e.g., `head_crest`, `wing_bottom`).
 2.  Each polygon is drawn using the vertices from the bird's genetic shape data.
 3.  The polygon is filled with the corresponding color from the bird's genetic color palette.
-4.  The entire composite shape is then scaled and rotated to match the bird's velocity, making it face its direction of travel.
+4.  The entire composite shape is then scaled and rotated, making the bird face its direction of travel.
 
 This system allows for a rich and visually diverse population of birds, where every individual can be subtly or dramatically unique.

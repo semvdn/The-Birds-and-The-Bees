@@ -11,7 +11,6 @@ export class Bird extends Boid {
         this.state = 'HUNTING'; // HUNTING, SEEKING_MATE, GO_TO_NEST
         this.genes = genes;
         this.dna = dna;
-        this.wanderAngle = Math.random() * 2 * Math.PI;
     }
 
     update(world) {
@@ -29,37 +28,28 @@ export class Bird extends Boid {
             case 'HUNTING':
                 const localPrey = world.beeGrid.query(this);
                 const hunt = this.hunt(localPrey);
-                this.velocity.x += hunt.x * this.dna.huntFactor;
-                this.velocity.y += hunt.y * this.dna.huntFactor;
-                
+                this.velocity.x += hunt.x * this.settings.huntFactor;
+                this.velocity.y += hunt.y * this.settings.huntFactor;
                 this.checkCatch(localPrey);
-
-                // --- Proactive Wander Behavior ---
-                const isHunting = Math.hypot(hunt.x, hunt.y) > 0.1;
-                // Check for flockmates (any other living bird nearby, not including itself)
-                const hasFlockmates = localBoids.some(b => b !== this && b.isAlive);
-
-                // If not actively hunting and all alone, wander to find food or friends.
-                if (!isHunting && !hasFlockmates) {
-                    this.wander();
-                }
-                
                 if (this.beesCaught >= NEST_SETTINGS.BEES_FOR_NEW_BIRD) {
                     this.state = 'SEEKING_MATE';
                 }
                 break;
             
             case 'SEEKING_MATE':
+                // --- POPULATION CHECK ---
+                // If the world is full, don't even bother trying to find a mate.
                 if (world.birds.length >= MAX_BIRDS) {
-                    this.state = 'HUNTING';
-                    this.beesCaught = 0;
-                    return;
+                    this.state = 'HUNTING'; // Go back to surviving.
+                    this.beesCaught = 0;   // Reset the counter, creating a "cost" for the failed attempt.
+                    return; // Exit behavior for this frame.
                 }
 
                 this.findPartnerAndNest(localBoids, world.nests);
                 break;
 
             case 'GO_TO_NEST':
+                // Check if the nesting attempt is still valid
                 if (!this.partner || !this.partner.isAlive || !this.matingNest || this.matingNest.hasEgg) {
                     this.resetMating();
                     return;
@@ -69,26 +59,13 @@ export class Bird extends Boid {
         }
     }
     
-    wander() {
-        // Adjust the wander angle slightly for the next frame
-        this.wanderAngle += (Math.random() - 0.5) * 0.4; 
-        
-        // Create a steering force from the wander angle
-        const steer = {
-            x: Math.cos(this.wanderAngle) * 0.1,
-            y: Math.sin(this.wanderAngle) * 0.1
-        };
-        
-        // Apply the force to the bird's velocity
-        this.velocity.x += steer.x;
-        this.velocity.y += steer.y;
-    }
-
     findPartnerAndNest(birds, nests) {
+        // Find a potential partner first
         for (const other of birds) {
             if (other !== this && other.state === 'SEEKING_MATE' && !other.partner) {
                 const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
-                if (distance < this.dna.visualRange) {
+                if (distance < this.settings.visualRange) {
+                    // Found a partner, now find a nest
                     let availableNest = null;
                     for (const nest of nests) {
                         if (nest.isAvailable) {
@@ -98,6 +75,7 @@ export class Bird extends Boid {
                     }
     
                     if (availableNest) {
+                        // Success! Claim the nest and pair up.
                         availableNest.isAvailable = false;
     
                         this.partner = other;
@@ -141,7 +119,7 @@ export class Bird extends Boid {
             this.velocity.x += steer.x * 0.005; this.velocity.y += steer.y * 0.005;
             if (this.partner) {
                 const cohesion = { x: this.partner.position.x - this.position.x, y: this.partner.position.y - this.position.y };
-                this.velocity.x += cohesion.x * this.dna.cohesionFactor; this.velocity.y += cohesion.y * this.dna.cohesionFactor;
+                this.velocity.x += cohesion.x * this.settings.cohesionFactor; this.velocity.y += cohesion.y * this.settings.cohesionFactor;
             }
         }
     }
@@ -153,7 +131,7 @@ export class Bird extends Boid {
         for (const p of prey) {
             if (p.isAlive) {
                 const distance = Math.hypot(this.position.x - p.position.x, this.position.y - p.position.y);
-                if (distance < closestDistance && distance < this.dna.visualRange) {
+                if (distance < closestDistance && distance < this.settings.visualRange) {
                     closestDistance = distance;
                     closestPrey = p;
                 }
@@ -169,18 +147,22 @@ export class Bird extends Boid {
     }
 
     resetMating() {
+        // If this bird was part of a pair that claimed a nest which does NOT yet have an egg,
+        // make that nest available again.
         if (this.matingNest && this.matingNest.isAvailable === false && !this.matingNest.hasEgg) {
             this.matingNest.isAvailable = true;
-            this.matingNest.occupants.clear();
+            this.matingNest.occupants.clear(); // Ensure any occupants are cleared out
         }
         
         const formerPartner = this.partner;
         
+        // Reset this bird's state
         this.state = 'HUNTING';
         this.beesCaught = 0;
         this.matingNest = null;
         this.partner = null;
         
+        // If it had a partner, tell the partner to reset as well, avoiding a recursive loop.
         if (formerPartner) {
             formerPartner.partner = null; 
             formerPartner.resetMating();
