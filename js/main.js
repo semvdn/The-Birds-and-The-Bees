@@ -237,8 +237,6 @@ function animate() {
     if (birds.length < 2 || bees.length < 2) {
         frame = 0;
         initialize();
-        // The crucial change: After re-initializing, we must request the *next* animation frame
-        // to kickstart the new simulation's loop. Then, we exit the current (obsolete) frame.
         requestAnimationFrame(animate); 
         return; 
     }
@@ -400,7 +398,9 @@ function initialize() {
     birdGrid = new Grid(canvas.width, canvas.height, cellSize);
     beeGrid = new Grid(canvas.width, canvas.height, cellSize);
     
+    // --- Clear all plotting history for a fresh start ---
     initializeTraitHistory();
+    populationHistory = { time: [], bees: [], birds: [] };
 
     let generationAttempts = 0;
     const maxAttempts = 50;
