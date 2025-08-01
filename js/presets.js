@@ -31,8 +31,8 @@ export const TREE_PRESETS = [
 export const SHRUB_PRESETS = [
     { type: 'leafy', rules: { 'X': 'F-[[XL]+XL]+F[+FXL]-XL', 'F': 'FF' }, iterations: 4, angle: 30, initialThickness: 4, barkColor: '#4c956c', leafColor: '#fefee3', leafShape: 'oval' },
     { type: 'leafy', rules: { 'X': 'F[+XL][-XL]FXL', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#5fa8d3', leafColor: '#f2f2f2', leafShape: 'willow' },
-    { type: 'flower', nectar: 20, nectarRegen: 2.0, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
-    { type: 'flower', nectar: 25, nectarRegen: 2.5, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
+    { type: 'flower', nectar: 20, nectarRegen: 0.20, flowerShape: 'petal', rules: { 'X': 'F[XO][F-XO]XO', 'F': 'FF' }, iterations: 4, angle: 28, initialThickness: 3, barkColor: '#6a994e' },
+    { type: 'flower', nectar: 25, nectarRegen: 0.25, flowerShape: 'bell', rules: { 'X': 'F[+FXO][-F-X]FX', 'F': 'FF' }, iterations: 4, angle: 25, initialThickness: 3, barkColor: '#7b8c74' }
 ];
 
 export const WEED_PRESETS = [
@@ -43,7 +43,7 @@ export const WEED_PRESETS = [
 ];
 
 // --- BOID SIMULATION CONSTANTS ---
-export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 2 };
+export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 1 };
 export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 5, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
 
 // --- BASE SETTINGS (NON-HERITABLE) ---

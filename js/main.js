@@ -22,6 +22,11 @@ const overlay = document.getElementById('overlay');
 const beePopulationElement = document.getElementById('bee-population');
 const birdPopulationElement = document.getElementById('bird-population');
 
+// Get references to the collapsible <details> elements containing the plots
+const populationGraphDetails = document.querySelector('#population-graph').closest('details');
+const beeViolinDetails = document.querySelector('#bee-violin-plot').closest('details');
+const birdViolinDetails = document.querySelector('#bird-violin-plot').closest('details');
+
 let trees = [], shrubs = [], weeds = [], flowers = [];
 let birds = [], bees = [];
 let hives = [], nests = [];
@@ -122,6 +127,21 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame++;
 
+    // --- Data Gathering & History ---
+    // This now runs regardless of overlay visibility to ensure data is always collected.
+    if (frame % 120 === 0) {
+        const currentTime = frame / 60; // Convert frames to seconds
+        populationHistory.time.push(currentTime);
+        populationHistory.bees.push(bees.length);
+        populationHistory.birds.push(birds.length);
+        
+        // Limit history to 100 points
+        if (populationHistory.time.length > 100) {
+            populationHistory.time.shift();
+            populationHistory.bees.shift();
+            populationHistory.birds.shift();
+        }
+    }
 
     // Insert only living boids into the grids for interaction calculations.
     birdGrid.clear();
@@ -239,140 +259,129 @@ function animate() {
     ctx.fillStyle = '#4a5742'; 
     ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
 
-    // Draw lightweight overlay elements directly on the canvas
+    // --- Overlay Rendering ---
+    // The overlay is only updated if it's visible.
     if (isOverlayVisible) {
+        updateOverlay(); // Call the dedicated rendering function.
         for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2);
     }
     requestAnimationFrame(animate);
 }
 
-/**
- * Gathers data for the plots. Runs continuously in the background.
- */
-function gatherPlotData() {
-    const currentTime = frame / 60; // Convert frames to seconds
-    populationHistory.time.push(currentTime);
-    populationHistory.bees.push(bees.length);
-    populationHistory.birds.push(birds.length);
-    
-    // Limit history to 100 points
-    if (populationHistory.time.length > 100) {
-        populationHistory.time.shift();
-        populationHistory.bees.shift();
-        populationHistory.birds.shift();
-    }
-}
-
-/**
- * Updates the visible overlay elements and graphs. Only performs work if the overlay is visible.
- */
+// This function is now ONLY for rendering the overlay. Data gathering is in animate().
 function updateOverlay() {
-    // Only run this logic if the overlay is visible.
-    if (!isOverlayVisible) return;
-
+    // Update simple text stats every frame the overlay is visible. This is cheap.
     beePopulationElement.textContent = `Bee Population: ${bees.length}`;
     birdPopulationElement.textContent = `Bird Population: ${birds.length}`;
 
-    // The data is already gathered; this function just draws the plots.
-    drawPopulationGraph();
-    drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
-    drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
-}
-
-function drawPopulationGraph() {
-    const plotDiv = document.getElementById('population-graph');
-
-    // Check if the plot has been initialized
-    if (!plotDiv.classList.contains('js-plotly-plot')) {
-        const beeTrace = {
-            x: populationHistory.time,
-            y: populationHistory.bees,
-            mode: 'lines',
-            name: 'Bees',
-            line: { color: '#FFC300' }
-        };
-        const birdTrace = {
-            x: populationHistory.time,
-            y: populationHistory.birds,
-            mode: 'lines',
-            name: 'Birds',
-            line: { color: '#87CEFA' }
-        };
-        const layout = {
-            title: 'Population Over Time',
-            xaxis: { title: 'Time (s)', gridcolor: '#444' },
-            yaxis: { title: 'Population', gridcolor: '#444' },
-            margin: { t: 30, l: 40, r: 20, b: 30 },
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0.2)',
-            font: { color: 'white' },
-            legend: { x: 0.1, y: 0.9 }
-        };
-        Plotly.newPlot('population-graph', [beeTrace, birdTrace], layout, {responsive: true});
-    } else {
-        // If plot exists, just update the data for better performance
-        Plotly.restyle('population-graph', {
-            x: [populationHistory.time, populationHistory.time],
-            y: [populationHistory.bees, populationHistory.birds]
-        });
+    // Update the complex and slow graphs only on the throttled interval,
+    // AND only if their respective collapsible section is open.
+    if (frame % 120 === 0) {
+        if (populationGraphDetails.open) {
+            drawPopulationGraph();
+        }
+        if (beeViolinDetails.open) {
+            drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
+        }
+        if (birdViolinDetails.open) {
+            drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
+        }
     }
 }
 
+// Optimized plotting function using Plotly.react for better performance.
+function drawPopulationGraph() {
+    const graphDiv = document.getElementById('population-graph');
+    const beeTrace = {
+        x: populationHistory.time,
+        y: populationHistory.bees,
+        mode: 'lines',
+        name: 'Bees',
+        line: { color: '#FFC300' }
+    };
+    const birdTrace = {
+        x: populationHistory.time,
+        y: populationHistory.birds,
+        mode: 'lines',
+        name: 'Birds',
+        line: { color: '#87CEFA' }
+    };
+    const layout = {
+        title: 'Population Over Time',
+        xaxis: { title: 'Time (s)', gridcolor: '#444' },
+        yaxis: { title: 'Population', gridcolor: '#444' },
+        margin: { t: 30, l: 40, r: 20, b: 30 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0.2)',
+        font: { color: 'white' },
+        legend: { x: 0.1, y: 0.9 }
+    };
+
+    // Use Plotly.react for efficient updates after the initial render.
+    // It's much faster than newPlot as it only updates what's changed.
+    if (graphDiv._fullView) {
+        Plotly.react(graphDiv, [beeTrace, birdTrace], layout);
+    } else {
+        Plotly.newPlot(graphDiv, [beeTrace, birdTrace], layout, {responsive: true});
+    }
+}
+
+// Optimized plotting function for violin plots.
 function drawTraitViolinPlots(elementId, population, template, titlePrefix) {
-    const plotDiv = document.getElementById(elementId);
+    const graphDiv = document.getElementById(elementId);
     if (population.length < 2) {
-        plotDiv.innerHTML = `<p style="padding: 10px;">Not enough data for ${titlePrefix.toLowerCase()} trait plots.</p>`;
+        // If we were showing a plot before, clear it before writing new text.
+        if (graphDiv._fullView) {
+             Plotly.purge(graphDiv);
+        }
+        graphDiv.innerHTML = `<p style="padding: 10px;">Not enough data for ${titlePrefix.toLowerCase()} trait plots.</p>`;
         return;
     }
 
     const traits = ['visualRange', 'separationFactor', 'alignmentFactor', 'cohesionFactor'];
+    const plotData = [];
+    const layout = {
+        title: `${titlePrefix} Trait Distribution`,
+        height: traits.length * 150, // Allocate height for each subplot
+        margin: { t: 40, l: 60, r: 20, b: 20 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0.2)',
+        font: { color: 'white' },
+        showlegend: false,
+        grid: {
+            rows: traits.length,
+            columns: 1,
+            pattern: 'independent'
+        }
+    };
 
-    // Check if the plot has been initialized
-    if (!plotDiv.classList.contains('js-plotly-plot')) {
-        const plotData = [];
-        const layout = {
-            title: `${titlePrefix} Trait Distribution`,
-            height: traits.length * 150, // Allocate height for each subplot
-            margin: { t: 40, l: 60, r: 20, b: 20 },
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0.2)',
-            font: { color: 'white' },
-            showlegend: false,
-            grid: {
-                rows: traits.length,
-                columns: 1,
-                pattern: 'independent'
-            }
-        };
-
-        traits.forEach((trait, i) => {
-            plotData.push({
-                x: population.map(p => p.dna[trait]),
-                name: trait.replace('Factor', ''),
-                type: 'violin',
-                box: { visible: true },
-                meanline: { visible: true },
-                xaxis: `x${i + 1}`,
-                yaxis: `y${i + 1}`
-            });
-
-            const { min, max } = template[trait];
-            layout[`xaxis${i + 1}`] = {
-                title: trait,
-                range: [min, max],
-                gridcolor: '#444'
-            };
-            layout[`yaxis${i + 1}`] = {
-                 showticklabels: false
-            };
+    traits.forEach((trait, i) => {
+        plotData.push({
+            x: population.map(p => p.dna[trait]), // Use x-axis for horizontal violins
+            name: trait.replace('Factor', ''),
+            type: 'violin',
+            box: { visible: true },
+            meanline: { visible: true },
+            xaxis: `x${i + 1}`,
+            yaxis: `y${i + 1}`
         });
-        Plotly.newPlot(elementId, plotData, layout, {responsive: true});
-    } else {
-        // If plot exists, just update the data arrays
-        const updateData = {
-            x: traits.map(trait => population.map(p => p.dna[trait]))
+
+        const { min, max } = template[trait];
+        layout[`xaxis${i + 1}`] = {
+            title: trait,
+            range: [min, max],
+            gridcolor: '#444'
         };
-        Plotly.restyle(elementId, updateData);
+        layout[`yaxis${i + 1}`] = {
+             showticklabels: false
+        };
+    });
+
+    // Use Plotly.react for efficient updates.
+    if (graphDiv._fullView) {
+        Plotly.react(graphDiv, plotData, layout);
+    } else {
+        Plotly.newPlot(graphDiv, plotData, layout, {responsive: true});
     }
 }
 
@@ -512,22 +521,50 @@ function initialize() {
             bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive, initialBeeDna));
         }
     }
-
-    // Set separate, non-blocking intervals for data gathering and rendering.
-    setInterval(gatherPlotData, 2000); // Gather data every 2s, always.
-    setInterval(updateOverlay, 2000); // Attempt to draw plots every 2s.
 }
 
 window.addEventListener('resize', initialize);
+
+// Simplified event listener to prevent the crash.
+// It ONLY toggles the visibility state. The animate loop handles the rest.
 window.addEventListener('keydown', (event) => {
     if (event.key === 'M' || event.key === 'm') {
-        overlay.classList.toggle('overlay-hidden');
-        isOverlayVisible = !overlay.classList.contains('overlay-hidden');
-        if (isOverlayVisible) {
-            // Trigger an immediate render when the overlay is first opened.
-            updateOverlay();
+        isOverlayVisible = !isOverlayVisible;
+        overlay.classList.toggle('overlay-hidden', !isOverlayVisible);
+        
+        // When hiding the overlay, it's good practice to purge the plots.
+        // This can free up memory and prevent issues if the window is resized while hidden.
+        if (!isOverlayVisible) {
+            Plotly.purge('population-graph');
+            Plotly.purge('bee-violin-plot');
+            Plotly.purge('bird-violin-plot');
+        } else {
+            // When the overlay becomes visible, update all visible plots immediately.
+            if (populationGraphDetails.open) drawPopulationGraph();
+            if (beeViolinDetails.open) drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
+            if (birdViolinDetails.open) drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
         }
     }
 });
+
+// Add event listeners to each <details> element to draw the plot when it's opened.
+populationGraphDetails.addEventListener('toggle', (event) => {
+    if (event.target.open) {
+        drawPopulationGraph();
+    }
+});
+
+beeViolinDetails.addEventListener('toggle', (event) => {
+    if (event.target.open) {
+        drawTraitViolinPlots('bee-violin-plot', bees.filter(b => b.isAlive), BEE_DNA_TEMPLATE, 'Bee');
+    }
+});
+
+birdViolinDetails.addEventListener('toggle', (event) => {
+    if (event.target.open) {
+        drawTraitViolinPlots('bird-violin-plot', birds.filter(b => b.isAlive), BIRD_DNA_TEMPLATE, 'Bird');
+    }
+});
+
 initialize();
 animate();
