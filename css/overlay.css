@@ -1,0 +1,49 @@
+#overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 400px; /* Adjusted width for better graph display */
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+    transition: opacity 0.5s ease-in-out, height 0.3s ease-in-out; /* Added height transition */
+    max-height: 95vh; /* Limit height to 95% of the viewport height */
+    overflow-y: auto; /* Add scrollbar only if content exceeds max-height */
+}
+
+#overlay p {
+    margin: 5px 0;
+}
+
+.overlay-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Styling for collapsible sections */
+details {
+    margin-bottom: 10px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 5px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+details[open] {
+    padding-bottom: 10px;
+}
+
+summary {
+    cursor: pointer;
+    font-weight: bold;
+    outline: none;
+}
+
+/* Graph container styling */
+.js-plotly-plot .plotly .modebar {
+    display: none !important; /* Hide the plotly mode bar for a cleaner look */
+}
