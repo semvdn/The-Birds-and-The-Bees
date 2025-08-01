@@ -1,10 +1,10 @@
 # Bird Appearance Mechanics
 
-The visual appearance of each bird in the simulation is not random; it is determined by a set of "genes" that are inherited, blended, and mutated across generations. This genetic system is defined in `presets.js` and implemented in `main.js`.
+The visual appearance of each bird in the simulation is not random; it is determined by a set of "genes" that are inherited, blended, and mutated across generations. This genetic system is defined in [`js/presets.js`](js/presets.js:99) and implemented in [`js/main.js`](js/main.js:99).
 
 ## Genetic Components (`BIRD_GENES`)
 
-A bird's appearance is defined by a combination of shapes and colors.
+A bird's appearance is defined by a combination of shapes and colors stored in [`BIRD_GENES`](js/presets.js:99).
 
 1.  **Body Shapes:** These are predefined sets of vertices that form the main body of the bird. The simulation includes a `STANDARD` and `CRACKER` body type.
 
@@ -32,7 +32,7 @@ While inheritance and blending create new combinations of traits, mutation intro
 
 ## Drawing the Bird Model
 
-The final appearance is rendered in the `drawBirdModel` function (`drawing.js`):
+The final appearance is rendered in the [`drawBirdModel`](js/boids/drawing.js:3) function ([`js/boids/drawing.js`](js/boids/drawing.js:3)):
 
 1.  The bird's geometry is defined as a series of closed polygons (e.g., `head_crest`, `wing_bottom`).
 2.  Each polygon is drawn using the vertices from the bird's genetic shape data.
