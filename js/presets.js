@@ -4,13 +4,13 @@ export const MAX_TREES = 6;
 export const GLOBAL_WIND_STRENGTH = 2.0;
 export const SHRUB_WIND_MULTIPLIER = 2.0;
 export const WEED_WIND_MULTIPLIER = 4.0;
-export const MAX_BEES = 150;
-export const MAX_BIRDS = 40;
+export const MAX_BEES = 120;
+export const MAX_BIRDS = 30;
 export const MIN_HOME_SEPARATION = 40; // Minimum pixels between nests/hives on the same tree
 export const GROUND_HEIGHT = 30; // Define ground height for physics and drawing
 export const MIN_FLOWERS = 7; // Minimum number of flower-producing shrubs
-export const BEE_MAX_LIFETIME_SECONDS = 240; // A bee can live for up to a minute
-export const BIRD_MAX_LIFETIME_SECONDS = 360; // A bird can live for up to 3 minutes
+export const BEE_MAX_LIFETIME_SECONDS = 60; // A bee can live for up to a minute
+export const BIRD_MAX_LIFETIME_SECONDS = 120; // A bird can live for up to 3 minutes
 export const GRAVITY = 0.1; // Downward force on dead boids
 export const DEATH_FADE_TIME = 120; // 2 seconds to fade out on the ground
 
@@ -43,8 +43,8 @@ export const WEED_PRESETS = [
 ];
 
 // --- BOID SIMULATION CONSTANTS ---
-export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 5 };
-export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 2, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
+export const HIVE_SETTINGS = { NECTAR_FOR_NEW_BEE: 3 };
+export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 5, HATCH_TIME_SECONDS: 5, NESTING_TIME_SECONDS: 3 };
 
 // --- BASE SETTINGS (NON-HERITABLE) ---
 export const BIRD_SETTINGS = { 
@@ -57,8 +57,8 @@ export const BIRD_SETTINGS = {
 };
 export const BEE_SETTINGS = { 
     maxSpeed: 1.65, 
-    nectarCapacity: 5,
-    gatherTime: 5, // Time in frames to gather nectar from a flower
+    nectarCapacity: 1,
+    gatherTime: 30, // Time in frames to gather nectar from a flower
     returnFactor: 0.006, // Stronger steering force when returning to hive
     maxLifetime: BEE_MAX_LIFETIME_SECONDS * 60, // in frames
     initialEnergy: 100,

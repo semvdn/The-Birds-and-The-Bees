@@ -122,11 +122,6 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame++;
 
-    if (frame % 300 === 0) { 
-        for (const hive of hives) {
-            hive.knownFlowerLocations.length = 0;
-        }
-    }
 
     // Insert only living boids into the grids for interaction calculations.
     birdGrid.clear();
@@ -138,6 +133,12 @@ function animate() {
 
     const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid, groundHeight: GROUND_HEIGHT };
     
+    for (const flower of flowers) {
+        for (const petal of flower.petalPoints) {
+            petal.nectar = Math.min(1, petal.nectar + 0.0005);
+        }
+    }
+
     const allPlants = [...trees, ...shrubs, ...weeds];
     allPlants.sort((a, b) => b.x - a.x);
 
@@ -437,7 +438,14 @@ function initialize() {
             plant.position = { x: plant.x, y: canvas.height - targetHeight/2 };
             plant.presetNectar = plant.nectar; flowers.push(plant);
         }
-        preRenderPlant(plant, canvas); shrubs.push(plant);
+        preRenderPlant(plant, canvas);
+        if (plant.type === 'flower') {
+            for (const point of plant.petalPoints) {
+                point.x = point.x + plant.x - plant.renderHeight / 2;
+                point.y = point.y + canvas.height - plant.renderHeight;
+            }
+        }
+        shrubs.push(plant);
     }
 
     const numWeeds = 40; const spacingWeeds = canvas.width / numWeeds;

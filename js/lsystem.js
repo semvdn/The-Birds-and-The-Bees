@@ -74,5 +74,8 @@ export function setupPlantData(preset, plantType) {
         }
     }
     const unscaledHeight = calculateMaxHeight(lindenmayerString, length, preset.angle);
-    return { ...preset, plantType, lindenmayerString, length, unscaledHeight, barkColors, branchPoints, stack: [] };
+    const plant = { ...preset, plantType, lindenmayerString, length, unscaledHeight, barkColors, branchPoints, stack: [] };
+    plant.petalPoints = [];
+    plant.beesOnFlower = 0;
+    return plant;
 }

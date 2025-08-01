@@ -57,7 +57,11 @@ export function preRenderPlant(plant, canvas) {
                 currentTransform.lineWidth *= 0.98;
                 break;
             case 'L': drawStaticLeaf(oCtx, plant); break;
-            case 'O': drawStaticFlower(oCtx, plant); break;
+            case 'O':
+                const transform = oCtx.getTransform();
+                plant.petalPoints.push({ x: transform.e, y: transform.f, occupied: false, nectar: 1 });
+                drawStaticFlower(oCtx, plant);
+                break;
             case '+': oCtx.rotate((Math.PI / 180) * plant.angle); break;
             case '-': oCtx.rotate(-(Math.PI / 180) * plant.angle); break;
             case '[': 
