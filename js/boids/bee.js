@@ -59,12 +59,17 @@ export class Bee extends Boid {
     findBestFlower(flowers) {
         let bestFlower = null;
         let bestScore = -1;
+        const visualRangeSq = this.dna.visualRange * this.dna.visualRange;
+
         for (const flower of flowers) {
             if (flower === this.lastVisitedFlower || flower.beesOnFlower >= 10) continue;
             if (flower.petalPoints.some(p => p.nectar >= 1)) {
-                const dist = Math.hypot(this.position.x - flower.position.x, this.position.y - flower.position.y);
-                if (dist < this.dna.visualRange) {
-                    const score = flower.petalPoints.reduce((acc, p) => acc + p.nectar, 0) / (dist * dist + 1);
+                const dx = this.position.x - flower.position.x;
+                const dy = this.position.y - flower.position.y;
+                const distSq = dx * dx + dy * dy;
+
+                if (distSq < visualRangeSq) {
+                    const score = flower.petalPoints.reduce((acc, p) => acc + p.nectar, 0) / (distSq + 1);
                     if (score > bestScore) {
                         bestScore = score;
                         bestFlower = flower;
@@ -87,8 +92,10 @@ export class Bee extends Boid {
         for (const flower of this.hive.knownFlowerLocations) {
             if (flower === this.lastVisitedFlower || flower.beesOnFlower >= 10 || flower.vanished) continue;
             if (flower.petalPoints.some(p => p.nectar >= 1)) {
-                const dist = Math.hypot(this.position.x - flower.position.x, this.position.y - flower.position.y);
-                const score = flower.petalPoints.reduce((acc, p) => acc + p.nectar, 0) / (dist * dist + 1);
+                const dx = this.position.x - flower.position.x;
+                const dy = this.position.y - flower.position.y;
+                const distSq = dx * dx + dy * dy;
+                const score = flower.petalPoints.reduce((acc, p) => acc + p.nectar, 0) / (distSq + 1);
                 if (score > bestScore) {
                     bestScore = score;
                     bestFlower = flower;
@@ -128,12 +135,14 @@ export class Bee extends Boid {
                 }
             }
             const desired = { x: this.targetPetal.x - this.position.x, y: this.targetPetal.y - this.position.y };
-            const dist = Math.hypot(desired.x, desired.y);
-            if (dist < 2) {
+            const distSq = desired.x * desired.x + desired.y * desired.y;
+
+            if (distSq < 4) { // dist < 2
                 this.state = 'GATHERING_NECTAR';
                 this.gatheringCountdown = this.settings.gatherTime;
                 this.velocity = { x: 0, y: 0 };
             } else {
+                const dist = Math.sqrt(distSq);
                 let magnitude = this.settings.maxSpeed;
                 if (dist < 50) { magnitude = (dist / 50) * this.settings.maxSpeed; }
                 desired.x = (desired.x / dist) * magnitude;
@@ -184,26 +193,35 @@ export class Bee extends Boid {
             let bestHive = null;
             // If population is low, use simple "closest hive" logic for efficiency
             if (world.bees.length < BEE_POPULATION_THRESHOLD) {
-                let minDistance = Infinity;
+                let minDistanceSq = Infinity;
                 for (const hive of world.hives) {
-                    const distance = Math.hypot(this.position.x - hive.position.x, this.position.y - hive.position.y);
-                    if (distance < minDistance) {
-                        minDistance = distance;
+                    const dx = this.position.x - hive.position.x;
+                    const dy = this.position.y - hive.position.y;
+                    const distanceSq = dx * dx + dy * dy;
+                    if (distanceSq < minDistanceSq) {
+                        minDistanceSq = distanceSq;
                         bestHive = hive;
                     }
                 }
             } else {
                 // If population is healthy, use a score-based system
                 let maxScore = -Infinity;
+                const dangerRadiusSq = HIVE_DANGER_RADIUS * HIVE_DANGER_RADIUS;
+
                 for (const hive of world.hives) {
-                    const distance = Math.hypot(this.position.x - hive.position.x, this.position.y - hive.position.y);
+                    const dx = this.position.x - hive.position.x;
+                    const dy = this.position.y - hive.position.y;
+                    const distanceSq = dx * dx + dy * dy;
                     
-                    // Count birds near the hive to determine danger level
+                    // Count birds near the hive to determine danger level (OPTIMIZED)
                     let danger = 0;
-                    for (const bird of world.birds) {
+                    const nearbyBirds = world.birdGrid.query(hive); // Use grid query
+                    for (const bird of nearbyBirds) {
                         if (bird.isAlive) {
-                            const birdDist = Math.hypot(hive.position.x - bird.position.x, hive.position.y - bird.position.y);
-                            if (birdDist < HIVE_DANGER_RADIUS) {
+                            const birdDx = hive.position.x - bird.position.x;
+                            const birdDy = hive.position.y - bird.position.y;
+                            const birdDistSq = birdDx * birdDx + birdDy * birdDy;
+                            if (birdDistSq < dangerRadiusSq) {
                                 danger++;
                             }
                         }
@@ -211,7 +229,8 @@ export class Bee extends Boid {
 
                     // Score = (1 / distance) * (1 / occupancy) * (1 / danger)
                     // We add 1 to denominators to avoid division by zero
-                    const score = (1 / (distance + 1)) * (1 / (1 + hive.beesEnRoute)) * (1 / (1 + danger * HIVE_DANGER_WEIGHT));
+                    // Using distanceSq in the score to avoid sqrt
+                    const score = (1 / (distanceSq + 1)) * (1 / (1 + hive.beesEnRoute)) * (1 / (1 + danger * HIVE_DANGER_WEIGHT));
 
                     if (score > maxScore) {
                         maxScore = score;
@@ -230,8 +249,11 @@ export class Bee extends Boid {
             return;
         }
 
-        const dist = Math.hypot(this.position.x - this.targetHive.position.x, this.position.y - this.targetHive.position.y);
-        if (dist < 10) {
+        const dx = this.position.x - this.targetHive.position.x;
+        const dy = this.position.y - this.targetHive.position.y;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq < 100) { // dist < 10
             this.targetHive.nectar += this.nectar;
             this.targetHive.contributorCount++;
             for (const key in this.dna) {
@@ -257,11 +279,16 @@ export class Bee extends Boid {
 
     evade(predators) {
         const steering = { x: 0, y: 0 };
+        const visualRangeSq = this.dna.visualRange * this.dna.visualRange;
+
         for (const predator of predators) {
-            const distance = Math.hypot(this.position.x - predator.position.x, this.position.y - predator.position.y);
-            if (distance < this.dna.visualRange) {
-                steering.x += this.position.x - predator.position.x;
-                steering.y += this.position.y - predator.position.y;
+            const dx = this.position.x - predator.position.x;
+            const dy = this.position.y - predator.position.y;
+            const distanceSq = dx * dx + dy * dy;
+
+            if (distanceSq < visualRangeSq) {
+                steering.x += dx;
+                steering.y += dy;
             }
         }
         return steering;

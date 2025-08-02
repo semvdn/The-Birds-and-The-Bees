@@ -149,19 +149,16 @@ function recalculateHomePositions() {
     for (const home of allHomes) {
         const plant = home.tree;
         const trunkSway = Math.sin((frame / 220) + plant.x / 50) * 0.015 * GLOBAL_WIND_STRENGTH;
-        let x = plant.x, y = canvas.height, angle = -90 * (Math.PI / 180) + trunkSway, length = plant.length * plant.scale;
-        const stack = [];
-        for(let i = 0; i < home.branchPoint.index; i++) {
-            const command = plant.lindenmayerString[i];
-            switch(command) {
-                case 'F': x += length * Math.cos(angle); y += length * Math.sin(angle); break;
-                case '+': angle += (Math.PI / 180) * plant.angle; break;
-                case '-': angle -= (Math.PI / 180) * plant.angle; break;
-                case '[': stack.push({ x, y, angle }); break;
-                case ']': ({ x, y, angle } = stack.pop()); break;
-            }
-        }
-        home.position.x = x; home.position.y = y;
+        
+        // Apply rotation to the cached relative position
+        const cosSway = Math.cos(trunkSway);
+        const sinSway = Math.sin(trunkSway);
+        const rotatedX = home.relativePos.x * cosSway - home.relativePos.y * sinSway;
+        const rotatedY = home.relativePos.x * sinSway + home.relativePos.y * cosSway;
+
+        // Add the rotated position to the tree's base to get the new world position
+        home.position.x = plant.x + rotatedX;
+        home.position.y = canvas.height + rotatedY;
     }
 }
 
@@ -374,13 +371,20 @@ function drawTraitEvolutionGraphs(elementId, history, template, titlePrefix) {
     else { Plotly.newPlot(graphDiv, plotData, layout, {responsive: true}); }
 }
 
-function getStaticBranchPosition(plant, branchPoint) {
-    let x = plant.x, y = canvas.height, angle = -90 * (Math.PI / 180), length = plant.length * plant.scale;
+function getRelativeBranchPosition(plant, branchPoint) {
+    // Calculates the final x,y of a branch point relative to the tree's base (0,0)
+    let x = 0, y = 0;
+    let angle = -90 * (Math.PI / 180);
+    let length = plant.length * plant.scale;
     const stack = [];
-    for(let i = 0; i < branchPoint.index; i++) {
+
+    for(let i = 0; i <= branchPoint.index; i++) {
         const command = plant.lindenmayerString[i];
         switch(command) {
-            case 'F': x += length * Math.cos(angle); y += length * Math.sin(angle); break;
+            case 'F': 
+                x += length * Math.cos(angle);
+                y += length * Math.sin(angle);
+                break;
             case '+': angle += (Math.PI / 180) * plant.angle; break;
             case '-': angle -= (Math.PI / 180) * plant.angle; break;
             case '[': stack.push({ x, y, angle }); break;
@@ -389,6 +393,13 @@ function getStaticBranchPosition(plant, branchPoint) {
     }
     return { x, y };
 }
+
+function getStaticBranchPosition(plant, branchPoint) {
+    // Calculates absolute world position, needed for initial placement checks
+    const relativePos = getRelativeBranchPosition(plant, branchPoint);
+    return { x: plant.x + relativePos.x, y: canvas.height + relativePos.y };
+}
+
 
 function initialize() {
     canvas.width = window.innerWidth;
@@ -432,7 +443,8 @@ function initialize() {
                 const candidatePos = getStaticBranchPosition(plant, bp);
                 if (Math.abs(candidatePos.y - firstBranchY) > 1.0) {
                     if (!validBranchPointsOnTree.some(p => Math.hypot(p.position.x - candidatePos.x, p.position.y - candidatePos.y) < MIN_HOME_SEPARATION)) {
-                        const homeInfo = { position: candidatePos, tree: plant, branchPoint: bp };
+                        const relativePos = getRelativeBranchPosition(plant, bp);
+                        const homeInfo = { position: candidatePos, tree: plant, branchPoint: bp, relativePos: relativePos };
                         validBranchPointsOnTree.push(homeInfo);
                     }
                 }

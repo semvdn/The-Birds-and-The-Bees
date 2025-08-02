@@ -98,19 +98,27 @@ export class Boid {
         const coh = { x: 0, y: 0 };
         let sepCount = 0, aliCount = 0, cohCount = 0;
 
+        const visualRangeSq = this.settings.visualRange * this.settings.visualRange;
+        const separationDistSq = this.settings.separationDistance * this.settings.separationDistance;
+
         for (const other of localBoids) {
             if (other === this || !other.isAlive) continue;
-            const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
-            if (distance > 0 && distance < this.settings.visualRange) {
+            
+            const dx = this.position.x - other.position.x;
+            const dy = this.position.y - other.position.y;
+            const distanceSq = dx * dx + dy * dy;
+
+            if (distanceSq > 0 && distanceSq < visualRangeSq) {
                 coh.x += other.position.x;
                 coh.y += other.position.y;
                 cohCount++;
                 ali.x += other.velocity.x;
                 ali.y += other.velocity.y;
                 aliCount++;
-                if (distance < this.settings.separationDistance) {
-                    const diffX = (this.position.x - other.position.x) / distance;
-                    const diffY = (this.position.y - other.position.y) / distance;
+                if (distanceSq < separationDistSq) {
+                    const distance = Math.sqrt(distanceSq); // Only sqrt when needed
+                    const diffX = dx / distance;
+                    const diffY = dy / distance;
                     sep.x += diffX;
                     sep.y += diffY;
                     sepCount++;
@@ -155,9 +163,10 @@ export class Boid {
     }
 
     limitSpeed() {
-        const speed = Math.hypot(this.velocity.x, this.velocity.y);
-        if (speed > this.settings.maxSpeed) {
-            const ratio = this.settings.maxSpeed / speed;
+        const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y;
+        const maxSpeedSq = this.settings.maxSpeed * this.settings.maxSpeed;
+        if (speedSq > maxSpeedSq) {
+            const ratio = this.settings.maxSpeed / Math.sqrt(speedSq);
             this.velocity.x *= ratio;
             this.velocity.y *= ratio;
         }

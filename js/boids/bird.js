@@ -63,11 +63,15 @@ export class Bird extends Boid {
     }
     
     findPartnerAndNest(birds, nests) {
+        const visualRangeSq = this.settings.visualRange * this.settings.visualRange;
         // Find a potential partner first
         for (const other of birds) {
             if (other !== this && other.state === 'SEEKING_MATE' && !other.partner) {
-                const distance = Math.hypot(this.position.x - other.position.x, this.position.y - other.position.y);
-                if (distance < this.settings.visualRange) {
+                const dx = this.position.x - other.position.x;
+                const dy = this.position.y - other.position.y;
+                const distanceSq = dx * dx + dy * dy;
+
+                if (distanceSq < visualRangeSq) {
                     // Found a partner, now find a nest
                     let availableNest = null;
                     for (const nest of nests) {
@@ -99,11 +103,15 @@ export class Bird extends Boid {
     checkCatch(prey) {
         for (const p of prey) {
             if (p.isAlive) {
-                const distance = Math.hypot(this.position.x - p.position.x, this.position.y - p.position.y);
                 const currentSpeed = Math.hypot(this.velocity.x, this.velocity.y);
                 const effectiveKillRange = this.settings.killRange + (currentSpeed * 0.5);
+                const effectiveKillRangeSq = effectiveKillRange * effectiveKillRange;
 
-                if (distance < effectiveKillRange) {
+                const dx = this.position.x - p.position.x;
+                const dy = this.position.y - p.position.y;
+                const distanceSq = dx * dx + dy * dy;
+
+                if (distanceSq < effectiveKillRangeSq) {
                     p.die('predation');
                     this.beesCaught++;
                     this.energy = Math.min(this.settings.initialEnergy, this.energy + this.settings.energyFromBee);
@@ -114,8 +122,11 @@ export class Bird extends Boid {
     }
 
     goToNest() {
-        const dist = Math.hypot(this.position.x - this.matingNest.position.x, this.position.y - this.matingNest.position.y);
-        if (dist < 15) {
+        const dx = this.position.x - this.matingNest.position.x;
+        const dy = this.position.y - this.matingNest.position.y;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq < 225) { // dist < 15
             this.matingNest.occupants.add(this);
         } else {
             const steer = { x: this.matingNest.position.x - this.position.x, y: this.matingNest.position.y - this.position.y };
@@ -129,13 +140,16 @@ export class Bird extends Boid {
 
     hunt(prey) {
         const steering = { x: 0, y: 0 };
-        let closestDistance = Infinity, closestPrey = null;
+        let closestDistanceSq = Infinity, closestPrey = null;
+        const visualRangeSq = this.settings.visualRange * this.settings.visualRange;
 
         for (const p of prey) {
             if (p.isAlive) {
-                const distance = Math.hypot(this.position.x - p.position.x, this.position.y - p.position.y);
-                if (distance < closestDistance && distance < this.settings.visualRange) {
-                    closestDistance = distance;
+                const dx = this.position.x - p.position.x;
+                const dy = this.position.y - p.position.y;
+                const distanceSq = dx * dx + dy * dy;
+                if (distanceSq < closestDistanceSq && distanceSq < visualRangeSq) {
+                    closestDistanceSq = distanceSq;
                     closestPrey = p;
                 }
             }
