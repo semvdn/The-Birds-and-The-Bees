@@ -1,5 +1,6 @@
 import { Boid } from './boid.js';
 import { NEST_SETTINGS, MAX_BIRDS } from '../presets.js';
+import { preRenderBird } from './drawing.js';
 
 export class Bird extends Boid {
     constructor(x, y, settings, nest, genes, dna) {
@@ -11,6 +12,8 @@ export class Bird extends Boid {
         this.state = 'HUNTING'; // HUNTING, SEEKING_MATE, GO_TO_NEST
         this.genes = genes;
         this.dna = dna;
+
+        preRenderBird(this); // Pre-render the bird sprite on creation
     }
 
     update(world) {

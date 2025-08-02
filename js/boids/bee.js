@@ -1,5 +1,6 @@
 import { Boid } from './boid.js';
 import { BEE_POPULATION_THRESHOLD, HIVE_DANGER_RADIUS, HIVE_DANGER_WEIGHT } from '../presets.js';
+import { preRenderBee } from '../boids/drawing.js';
 
 export class Bee extends Boid {
     constructor(x, y, settings, hive, dna) {
@@ -14,6 +15,8 @@ export class Bee extends Boid {
         this.lastVisitedFlower = null;
         this.wanderAngle = Math.random() * 2 * Math.PI;
         this.targetHive = null; // The hive this bee is currently returning to
+
+        preRenderBee(this); // Pre-render the bee sprite on creation
     }
 
     update(world) {

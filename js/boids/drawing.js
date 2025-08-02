@@ -1,7 +1,6 @@
 import { DEATH_FADE_TIME } from "../presets.js";
 
 export function drawBirdModel(ctx, boid) {
-    // ... (no changes in this function)
     const { bodyVertices, beakVertices, tailVertices, palette } = boid.genes;
     let displayPalette = { ...palette.colors };
     if (boid.isAlive && boid.state === 'SEEKING_MATE') {
@@ -32,8 +31,28 @@ export function drawBirdModel(ctx, boid) {
     }
 }
 
+export function preRenderBird(boid) {
+    const scale = 5;
+    const width = 60, height = 40; // Estimated size to fit the bird model
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = width;
+    offscreenCanvas.height = height;
+    const oCtx = offscreenCanvas.getContext('2d');
+
+    oCtx.save();
+    oCtx.translate(width / 2, height / 2);
+
+    // Render facing right version
+    oCtx.save();
+    oCtx.scale(scale, -scale); // Flipped Y to match original rendering
+    drawBirdModel(oCtx, boid);
+    oCtx.restore();
+    boid.preRenderedCanvas = offscreenCanvas;
+}
+
+
 export function drawBird(ctx, boid) {
-    if (boid.vanished) return;
+    if (boid.vanished || !boid.preRenderedCanvas) return;
     
     ctx.save();
     
@@ -44,24 +63,41 @@ export function drawBird(ctx, boid) {
 
     ctx.translate(boid.position.x, boid.position.y);
     
-    // If dead on the ground, draw it on its side. Otherwise, orient it with its velocity.
     if (!boid.isAlive && boid.deathTimer > 0) {
         ctx.rotate(Math.PI / 2);
-        ctx.scale(5, 5); // Use a fixed scale
     } else {
         const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
         ctx.rotate(angle);
         const isFacingRight = Math.abs(angle) < Math.PI / 2;
-        const scaleY = isFacingRight ? -5 : 5;
-        ctx.scale(5, scaleY);
+        if (!isFacingRight) {
+            ctx.scale(1, -1); // Flip the pre-rendered canvas vertically for left-facing
+        }
     }
     
-    drawBirdModel(ctx, boid);
+    ctx.drawImage(boid.preRenderedCanvas, -boid.preRenderedCanvas.width / 2, -boid.preRenderedCanvas.height / 2);
     ctx.restore();
 }
 
+export function preRenderBee(boid) {
+    const width = 12, height = 8;
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = width;
+    offscreenCanvas.height = height;
+    const oCtx = offscreenCanvas.getContext('2d');
+
+    oCtx.translate(width / 2, height / 2);
+    oCtx.fillStyle = '#FFC300';
+    oCtx.beginPath();
+    oCtx.ellipse(0, 0, 5, 3, 0, 0, Math.PI * 2);
+    oCtx.fill();
+    oCtx.fillStyle = '#000000';
+    oCtx.fillRect(-2, -3, 2, 6);
+    boid.preRenderedCanvas = offscreenCanvas;
+}
+
+
 export function drawBee(ctx, boid) {
-    if (boid.vanished) return;
+    if (boid.vanished || !boid.preRenderedCanvas) return;
     
     ctx.save();
 
@@ -72,18 +108,16 @@ export function drawBee(ctx, boid) {
 
     ctx.translate(boid.position.x, boid.position.y);
 
-    // Only rotate living bees
     if (boid.isAlive) {
         const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
         ctx.rotate(angle);
     }
 
-    ctx.fillStyle = '#FFC300'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#000000'; ctx.fillRect(-2, -3, 2, 6);
+    ctx.drawImage(boid.preRenderedCanvas, -boid.preRenderedCanvas.width / 2, -boid.preRenderedCanvas.height / 2);
     ctx.restore();
 }
 
-// ... (The rest of drawing.js remains unchanged)
+
 export function preRenderHive(hive) {
     const width = 35, height = 50;
     const offscreenCanvas = document.createElement('canvas');
