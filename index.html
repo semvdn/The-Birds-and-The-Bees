@@ -1,4 +1,3 @@
-<!-- START OF CORRECTED index.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -9,12 +8,26 @@
     <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
 </head>
 <body>
-    <canvas id="simulationCanvas"></canvas>
-    <!-- 
-      By declaring main.js as a module, the browser will automatically handle
-      all the 'import' statements inside it (for boid.js, lsystem.js, etc.).
-      The other script tags are no longer needed.
-    -->
+    <canvas id="treeCanvas"></canvas>
+    <div id="overlay" class="overlay-hidden">
+        <details>
+            <summary>Population Stats</summary>
+            <p id="bee-population">Bee Population: 0</p>
+            <p id="bird-population">Bird Population: 0</p>
+        </details>
+        <details>
+            <summary>Population Over Time</summary>
+            <div id="population-graph"></div>
+        </details>
+        <details>
+            <summary>Bee Trait Distribution</summary>
+            <div id="bee-violin-plot"></div>
+        </details>
+        <details>
+            <summary>Bird Trait Distribution</summary>
+            <div id="bird-violin-plot"></div>
+        </details>
+    </div>
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

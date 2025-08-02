@@ -27,9 +27,12 @@ const populationGraphDetails = document.querySelector('#population-graph').close
 const beeViolinDetails = document.querySelector('#bee-violin-plot').closest('details');
 const birdViolinDetails = document.querySelector('#bird-violin-plot').closest('details');
 
-const insectFlock = new Flock();
-const birdFlock = new Flock();
-const plants = [];
+let trees = [], shrubs = [], weeds = [], flowers = [];
+let birds = [], bees = [];
+let hives = [], nests = [];
+let frame = 0;
+let birdGrid, beeGrid;
+let isOverlayVisible = false;
 
 // --- Data for Graphs ---
 let populationHistory = { time: [], bees: [], birds: [] };
@@ -162,56 +165,145 @@ function recalculateHomePositions() {
     }
 }
 
-const MAX_PLANTS = 10;
-const MAX_ATTEMPTS = 50;
-
-function isColliding(plant, otherPlants) {
-    const box1 = plant.getBoundingBox();
-    for (const other of otherPlants) {
-        const box2 = other.getBoundingBox();
-        if (box1.x < box2.x + box2.width &&
-            box1.x + box1.width > box2.x &&
-            box1.y < box2.y + box2.height &&
-            box1.y + box1.height > box2.y) {
-            return true;
-        }
-    }
-    return false;
-}
-
-for (let i = 0; i < MAX_PLANTS; i++) {
-    let attempts = 0;
-    while (attempts < MAX_ATTEMPTS) {
-        const x = Math.random() * canvas.width;
-        const y = canvas.height - 50;
-        const newPlant = new Plant(x, y);
-        if (!isColliding(newPlant, plants)) {
-            plants.push(newPlant);
-            break;
-        }
-        attempts++;
-    }
-}
-
-let frameCount = 0;
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frame++;
 
-    for (const plant of plants) {
-        plant.show(ctx);
-        plant.update();
+    if (frame % 120 === 0) {
+        const currentTime = frame / 60;
+        
+        populationHistory.time.push(currentTime);
+        populationHistory.bees.push(bees.length);
+        populationHistory.birds.push(birds.length);
+        if (populationHistory.time.length > 100) {
+            populationHistory.time.shift();
+            populationHistory.bees.shift();
+            populationHistory.birds.shift();
+        }
+
+        traitHistory.time.push(currentTime);
+        Object.keys(BIRD_DNA_TEMPLATE).forEach(trait => {
+            const values = birds.filter(b => b.isAlive).map(b => b.dna[trait]);
+            if (values.length > 0) {
+                traitHistory.birds[trait].mean.push(values.reduce((a, b) => a + b, 0) / values.length);
+                traitHistory.birds[trait].min.push(Math.min(...values));
+                traitHistory.birds[trait].max.push(Math.max(...values));
+            } else {
+                traitHistory.birds[trait].mean.push(null);
+                traitHistory.birds[trait].min.push(null);
+                traitHistory.birds[trait].max.push(null);
+            }
+        });
+        Object.keys(BEE_DNA_TEMPLATE).forEach(trait => {
+            const values = bees.filter(b => b.isAlive).map(b => b.dna[trait]);
+            if (values.length > 0) {
+                traitHistory.bees[trait].mean.push(values.reduce((a, b) => a + b, 0) / values.length);
+                traitHistory.bees[trait].min.push(Math.min(...values));
+                traitHistory.bees[trait].max.push(Math.max(...values));
+            } else {
+                traitHistory.bees[trait].mean.push(null);
+                traitHistory.bees[trait].min.push(null);
+                traitHistory.bees[trait].max.push(null);
+            }
+        });
     }
 
-    insectFlock.run(ctx, canvas.width, canvas.height, [], plants);
-    birdFlock.run(ctx, canvas.width, canvas.height, insectFlock.boids);
-
-    if (frameCount % 100 === 0) {
-        for (const plant of plants) {
-            plant.grow();
+    birdGrid.clear();
+    for (const bird of birds) if (bird.isAlive) birdGrid.insert(bird);
+    beeGrid.clear();
+    for (const bee of bees) if (bee.isAlive) beeGrid.insert(bee);
+    recalculateHomePositions();
+    const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid, groundHeight: GROUND_HEIGHT };
+    for (const flower of flowers) {
+        for (const petal of flower.petalPoints) {
+            petal.nectar = Math.min(1, petal.nectar + 0.0005);
         }
     }
+    const allPlants = [...trees, ...shrubs, ...weeds];
+    allPlants.sort((a, b) => b.x - a.x);
+    for (const plant of allPlants) {
+        drawPlant(plant, ctx, canvas, frame);
+        if (plant.plantType === 'tree') {
+            for (const nest of nests) if (nest.tree === plant) drawNest(ctx, nest);
+            for (const hive of hives) if (hive.tree === plant) drawHive(ctx, hive);
+        }
+    }
+    for (const bird of birds) { bird.update(world); drawBird(ctx, bird); }
+    for (const bee of bees) { bee.update(world); drawBee(ctx, bee); }
+    
+    bees = bees.filter(bee => !bee.vanished);
+    birds = birds.filter(bird => !bird.vanished);
 
-    frameCount++;
+    if (birds.length < 2 || bees.length < 2) {
+        frame = 0;
+        initialize();
+        requestAnimationFrame(animate); 
+        return; 
+    }
+
+    for (const hive of hives) {
+        const costForTwoBees = HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2;
+        if (hive.nectar >= costForTwoBees && bees.length < MAX_BEES - 1) {
+            hive.nectar -= costForTwoBees;
+            const baseBeeDna = {};
+            if (hive.contributorCount > 0) {
+                for (const key in BEE_DNA_TEMPLATE) { baseBeeDna[key] = hive.dnaPool[key] / hive.contributorCount; }
+            } else { 
+                for (const key in BEE_DNA_TEMPLATE) { baseBeeDna[key] = BEE_DNA_TEMPLATE[key].initial; }
+            }
+            const bee1Dna = {};
+            for (const key in baseBeeDna) {
+                const template = BEE_DNA_TEMPLATE[key];
+                bee1Dna[key] = mutate(baseBeeDna[key], template.min, template.max);
+            }
+            bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee1Dna));
+            const bee2Dna = {};
+            for (const key in baseBeeDna) {
+                const template = BEE_DNA_TEMPLATE[key];
+                bee2Dna[key] = mutate(baseBeeDna[key], template.min, template.max);
+            }
+            bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee2Dna));
+            hive.contributorCount = 0;
+            for (const key in hive.dnaPool) { hive.dnaPool[key] = 0; }
+        }
+    }
+    for (const nest of nests) {
+        if (nest.occupants.size >= 2 && nest.isAvailable === false && !nest.hasEgg && nest.nestingCountdown <= 0) {
+            nest.nestingCountdown = NEST_SETTINGS.NESTING_TIME_SECONDS * 60;
+        }
+        if (nest.occupants.size >= 2 && nest.nestingCountdown > 0) {
+            nest.nestingCountdown--;
+            if (nest.nestingCountdown <= 0) {
+                nest.hasEgg = true;
+                nest.hatchingCountdown = NEST_SETTINGS.HATCH_TIME_SECONDS * 60;
+                const matingPair = Array.from(nest.occupants);
+                nest.parentGenes = [matingPair[0].genes, matingPair[1].genes];
+                nest.parentDna = [matingPair[0].dna, matingPair[1].dna];
+                for (const parent of matingPair) parent.resetMating();
+                nest.occupants.clear();
+            }
+        }
+        if (nest.hasEgg) {
+            nest.hatchingCountdown--;
+            if (nest.hatchingCountdown <= 0) {
+                const { inheritedGenes, inheritedDna } = determineInheritance(
+                    nest.parentGenes[0], nest.parentDna[0], nest.parentGenes[1], nest.parentDna[1]
+                );
+                const newBird = new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, inheritedGenes, inheritedDna);
+                birds.push(newBird);
+                nest.hasEgg = false; 
+                nest.isAvailable = true;
+                nest.parentGenes = []; 
+                nest.parentDna = [];
+            }
+        }
+    }
+    ctx.fillStyle = '#4a5742'; 
+    ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+    if (isOverlayVisible) {
+        updateOverlay();
+        for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2);
+    }
     requestAnimationFrame(animate);
 }
 
