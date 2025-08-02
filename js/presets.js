@@ -54,7 +54,7 @@ export const NEST_SETTINGS = { BEES_FOR_NEW_BIRD: 5, HATCH_TIME_SECONDS: 5, NEST
 
 // --- BASE SETTINGS (NON-HERITABLE) ---
 export const BIRD_SETTINGS = { 
-    maxSpeed: 1.75, 
+    maxSpeed: 2.75, 
     killRange: 5,
     maxLifetime: BIRD_MAX_LIFETIME_SECONDS * 60, // in frames
     initialEnergy: 200,
@@ -62,7 +62,7 @@ export const BIRD_SETTINGS = {
     energyDepletionRate: 0.04, // Energy lost per frame
 };
 export const BEE_SETTINGS = { 
-    maxSpeed: 1.75, 
+    maxSpeed: 2.75, 
     nectarCapacity: 2,
     gatherTime: 30, // Time in frames to gather nectar from a flower
     maxLifetime: BEE_MAX_LIFETIME_SECONDS * 60, // in frames
