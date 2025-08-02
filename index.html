@@ -1,3 +1,4 @@
+<!-- START OF CORRECTED index.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -9,10 +10,11 @@
 </head>
 <body>
     <canvas id="simulationCanvas"></canvas>
-    <script src="js/vector.js"></script>
-    <script src="js/boid.js"></script>
-    <script src="js/flock.js"></script>
-    <script src="js/plant.js"></script>
-    <script src="js/main.js"></script>
+    <!-- 
+      By declaring main.js as a module, the browser will automatically handle
+      all the 'import' statements inside it (for boid.js, lsystem.js, etc.).
+      The other script tags are no longer needed.
+    -->
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
