@@ -23,6 +23,8 @@ For more detailed information on specific mechanics, see the other documentation
 
 ## How to Run
 
+clone the repo `git clonehttps://github.com/semvdn/The-Birds-and-The-Bees`
+
 This is a browser-based application with no dependencies. To run it, simply open the `index.html` file in a modern web browser (like Chrome, Firefox, or Edge).
 
 ## How to Interact
