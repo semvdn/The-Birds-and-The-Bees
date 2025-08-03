@@ -698,7 +698,7 @@ window.addEventListener('resize', () => {
     initialize();
 });
 
-function toggleOverlay(overlayElement, isMobileActive = false) {
+function toggleOverlay(overlayElement) {
     const isStats = overlayElement.id === 'overlay';
     
     if (isStats) {
@@ -709,14 +709,10 @@ function toggleOverlay(overlayElement, isMobileActive = false) {
 
     const shouldBeVisible = isStats ? isStatsOverlayVisible : isPerfOverlayVisible;
 
-    // For mobile, we add a class to make it visible, for desktop we just toggle the hidden class
-    if (isMobileActive) {
-        overlayElement.classList.toggle('mobile-active', shouldBeVisible);
-    }
+    overlayElement.classList.toggle('mobile-active', shouldBeVisible);
     overlayElement.classList.toggle('overlay-hidden', !shouldBeVisible);
 
 
-    // Purge plots when stats overlay is hidden
     if (isStats && !shouldBeVisible) {
         Plotly.purge('population-graph');
         Plotly.purge('bee-violin-plot');
@@ -724,41 +720,49 @@ function toggleOverlay(overlayElement, isMobileActive = false) {
     }
 }
 
+// Function to detect touch support
+const isTouchDevice = () => ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-window.addEventListener('keydown', (event) => {
-    if (event.key === 'M' || event.key === 'm') {
-        toggleOverlay(statsOverlay);
+function setupUI() {
+    if (isTouchDevice()) {
+        document.body.classList.add('touch-device');
+    } else {
+        document.body.classList.add('no-touch-device');
+        // Desktop-only keydown listeners
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'M' || event.key === 'm') {
+                toggleOverlay(statsOverlay);
+            }
+            if (event.key === 'P' || event.key === 'p') {
+                toggleOverlay(performanceOverlay);
+            }
+        });
     }
-    if (event.key === 'P' || event.key === 'p') {
-        toggleOverlay(performanceOverlay);
-    }
-});
 
-// --- Mobile Navigation ---
-hamburgerBtn.addEventListener('click', () => {
-    hamburgerBtn.classList.toggle('is-active');
-    mobileNav.classList.toggle('is-active');
-});
-
-navLinks.forEach(link => {
-    link.addEventListener('click', () => {
-        const overlayId = link.getAttribute('data-overlay-id');
-        const overlayElement = document.getElementById(overlayId);
-
-        // Hide other mobile-active overlays first
-        if (overlayId === 'overlay' && isPerfOverlayVisible) {
-            toggleOverlay(performanceOverlay, true);
-        } else if (overlayId === 'performance-overlay' && isStatsOverlayVisible) {
-            toggleOverlay(statsOverlay, true);
-        }
-        
-        toggleOverlay(overlayElement, true);
-
-        // Close hamburger menu after selection
-        hamburgerBtn.classList.remove('is-active');
-        mobileNav.classList.remove('is-active');
+    // Hamburger menu is only for touch devices
+    hamburgerBtn.addEventListener('click', () => {
+        hamburgerBtn.classList.toggle('is-active');
+        mobileNav.classList.toggle('is-active');
     });
-});
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            const overlayId = link.getAttribute('data-overlay-id');
+            const overlayElement = document.getElementById(overlayId);
+
+            if (overlayId === 'overlay') {
+                if(isPerfOverlayVisible) toggleOverlay(performanceOverlay); // Hide other if open
+                toggleOverlay(statsOverlay);
+            } else if (overlayId === 'performance-overlay') {
+                if(isStatsOverlayVisible) toggleOverlay(statsOverlay); // Hide other if open
+                toggleOverlay(performanceOverlay);
+            }
+            
+            hamburgerBtn.classList.remove('is-active');
+            mobileNav.classList.remove('is-active');
+        });
+    });
+}
 
 
 populationGraphDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawPopulationGraph(); } });
@@ -766,5 +770,6 @@ beeViolinDetails.addEventListener('toggle', (event) => { if (event.target.open) 
 birdViolinDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird'); } });
 
 // --- Initial Load ---
+setupUI();
 loadSettings();
 initialize();

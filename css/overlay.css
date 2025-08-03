@@ -18,6 +18,7 @@
     transform: scale(0.95);
 }
 
+/* Default Desktop Positioning */
 .stats-overlay {
     width: 400px;
     top: 10px;
@@ -135,8 +136,14 @@ summary {
     background: transparent;
     z-index: 1002;
     cursor: pointer;
-    display: none; /* Hidden on desktop */
+    display: none; /* Hidden by default */
 }
+
+/* Show hamburger only on touch devices */
+.touch-device #hamburger-btn {
+    display: block;
+}
+
 
 #hamburger-btn .hamburger-box {
     position: relative;
@@ -151,7 +158,7 @@ summary {
     position: absolute;
     width: 30px;
     height: 3px;
-    background-color: #000; /* Default color is black */
+    background-color: #000;
     border-radius: 2px;
     transition: transform 0.22s ease-in-out, background-color 0.22s ease-in-out;
 }
@@ -190,7 +197,7 @@ summary {
 
 #hamburger-btn.is-active .hamburger-inner::before,
 #hamburger-btn.is-active .hamburger-inner::after {
-    background-color: #696969; /* A nice, dark grey */
+    background-color: #696969;
 }
 
 
@@ -232,46 +239,43 @@ summary {
 }
 
 
-/* --- Media Queries for Mobile --- */
-/* Target devices with a max width of 900px (covers tablets and phones) */
-@media (max-width: 900px) {
-    #hamburger-btn {
-        display: block; /* Show hamburger on mobile */
-    }
+/* --- Mobile Layout Rules based on .touch-device class --- */
+/* Hide desktop overlays when on a touch device */
+.touch-device .desktop-overlay {
+    display: none;
+}
 
-    /* Hide desktop overlays by default on mobile */
-    .desktop-overlay {
-        display: none;
+.touch-device .stats-overlay,
+.touch-device .performance-overlay {
+    /* When active on mobile, they need to be displayed */
+    &.mobile-active {
+        display: block;
     }
+}
 
-    /* --- Portrait Mode Styling (Updated) --- */
-    @media (orientation: portrait) {
-        .stats-overlay.mobile-active,
-        .performance-overlay.mobile-active {
-            display: block;
-            /* Position from the top and left edges */
-            top: 15px;
-            left: 15px;
-            /* Set the right edge to leave space for the icon (40px icon + 15px margin + 15px buffer) */
-            right: 70px;
-            /* Do not set width, let the browser calculate it */
-            width: auto;
-            transform: none; /* Reset any transform */
-            max-height: 45vh; /* Limit height to prevent covering everything */
-        }
+/* Touch device in Portrait Mode */
+@media (orientation: portrait) {
+    .touch-device .stats-overlay.mobile-active,
+    .touch-device .performance-overlay.mobile-active {
+        top: 15px;
+        left: 15px;
+        /* Make the panel end before the hamburger icon starts */
+        right: 70px;
+        width: auto;
+        transform: none;
+        max-height: 45vh;
     }
+}
 
-    /* --- Landscape Mode Styling --- */
-    @media (orientation: landscape) {
-        .stats-overlay.mobile-active,
-        .performance-overlay.mobile-active {
-            display: block;
-            width: 45vw; /* Occupy 45% of the viewport width */
-            max-width: 400px; /* Don't get excessively wide on large tablets */
-            top: 5vh;   /* Position near the top */
-            left: 15px;  /* Position on the left side */
-            transform: none; /* Reset any transform */
-            max-height: 90vh; /* Allow it to use most of the screen height */
-        }
+/* Touch device in Landscape Mode */
+@media (orientation: landscape) {
+    .touch-device .stats-overlay.mobile-active,
+    .touch-device .performance-overlay.mobile-active {
+        width: 45vw;
+        max-width: 400px;
+        top: 5vh;
+        left: 15px;
+        transform: none;
+        max-height: 90vh;
     }
 }
