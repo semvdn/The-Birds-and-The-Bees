@@ -38,11 +38,11 @@ export function generateFavicon() {
     // 4. Position and scale the bird model to fit nicely in the icon
     ctx.save();
     ctx.translate(iconSize / 2, iconSize / 2); // Center the drawing origin
-    const scale = 8; // A good scale for a 64x64 canvas
+    const scale = 10; // A good scale for a 64x64 canvas
     ctx.scale(scale, -scale); // Use the same Y-flip as the main renderer
     
     // Nudge the bird to the right to ensure the beak is fully visible.
-    ctx.translate(1.5, 0); 
+    ctx.translate(2, 0); 
     
     // Draw the bird
     drawBirdModel(ctx, dummyBird);
