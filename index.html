@@ -23,8 +23,8 @@
         <button class="nav-link" data-overlay-id="performance-overlay">Toggle Settings Panel</button>
     </nav>
     
-    <!-- Original Overlays -->
-    <div id="overlay" class="stats-overlay desktop-overlay">
+    <!-- Set overlays to be hidden by default to prevent flash on load -->
+    <div id="overlay" class="stats-overlay desktop-overlay overlay-hidden">
         <details>
             <summary>Population Stats</summary>
             <p id="bee-population">Bee Population: 0</p>
@@ -44,7 +44,7 @@
         </details>
     </div>
 
-    <div id="performance-overlay" class="performance-overlay desktop-overlay">
+    <div id="performance-overlay" class="performance-overlay desktop-overlay overlay-hidden">
         <h3>Performance & Simulation Settings</h3>
 
         <fieldset>
