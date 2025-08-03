@@ -38,6 +38,10 @@ const fpsSelect = document.getElementById('fps-select');
 const windToggle = document.getElementById('wind-toggle');
 const applySettingsBtn = document.getElementById('apply-settings');
 const resetSettingsBtn = document.getElementById('reset-settings');
+// Mobile UI Elements
+const hamburgerBtn = document.getElementById('hamburger-btn');
+const mobileNav = document.getElementById('mobile-nav');
+const navLinks = document.querySelectorAll('.nav-link');
 
 
 let trees = [], shrubs = [], weeds = [], flowers = [];
@@ -185,7 +189,6 @@ function recalculateHomePositions() {
     }
 }
 
-// The new decoupled game loop
 function gameLoop(timestamp) {
     animationFrameId = requestAnimationFrame(gameLoop);
 
@@ -193,13 +196,11 @@ function gameLoop(timestamp) {
     lastFrameTime = timestamp;
     accumulator += deltaTime;
 
-    // Run simulation updates for all the time that has passed
     while (accumulator >= FIXED_TIMESTEP_MS) {
         simulationUpdate();
         accumulator -= FIXED_TIMESTEP_MS;
     }
 
-    // Throttle rendering to the user's selected FPS
     const renderNow = Date.now();
     const renderElapsed = renderNow - renderThen;
 
@@ -209,11 +210,9 @@ function gameLoop(timestamp) {
     }
 }
 
-// All simulation logic updates happen here, at a fixed rate
 function simulationUpdate() {
     frame++;
 
-    // Only collect data periodically for performance.
     if (frame % 120 === 0) {
         updateGraphData();
     }
@@ -240,7 +239,7 @@ function simulationUpdate() {
     birds = birds.filter(bird => !bird.vanished);
 
     if (birds.length < 2 || bees.length < 2) {
-        initialize(); // This will cancel the current loop and restart
+        initialize();
         return; 
     }
 
@@ -248,7 +247,6 @@ function simulationUpdate() {
     handleBirdReproduction();
 }
 
-// All drawing logic happens here, throttled to the selected FPS
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -338,14 +336,10 @@ function handleBirdReproduction() {
     }
 }
 
-// Corrected function
 function updateStatsOverlay() {
     beePopulationElement.textContent = `Bee Population: ${bees.length}`;
     birdPopulationElement.textContent = `Bird Population: ${birds.length}`;
 
-    // Plotly is efficient. We call react/newPlot which will only redraw if the
-    // underlying data has changed. This is safe to call every render frame.
-    // The data itself is only updated every 120 simulation frames.
     if (populationGraphDetails.open) { drawPopulationGraph(); }
     if (beeViolinDetails.open) { drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee'); }
     if (birdViolinDetails.open) { drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird'); }
@@ -353,7 +347,7 @@ function updateStatsOverlay() {
 
 
 function updateGraphData() {
-    const currentTime = frame / 60; // Time in seconds, based on fixed 60Hz update
+    const currentTime = frame / 60;
     
     populationHistory.time.push(currentTime);
     populationHistory.bees.push(bees.length);
@@ -684,7 +678,7 @@ function loadSettings() {
 
 function resetSettings() {
     localStorage.removeItem('simSettings');
-    loadSettings(); // Reload defaults into UI
+    loadSettings();
 }
 
 applySettingsBtn.addEventListener('click', () => {
@@ -698,31 +692,74 @@ resetSettingsBtn.addEventListener('click', () => {
     initialize();
 });
 
-
+// --- UI Event Listeners ---
 window.addEventListener('resize', () => {
     saveSettings();
     initialize();
 });
 
+function toggleOverlay(overlayElement, isMobileActive = false) {
+    const isStats = overlayElement.id === 'overlay';
+    
+    if (isStats) {
+        isStatsOverlayVisible = !isStatsOverlayVisible;
+    } else {
+        isPerfOverlayVisible = !isPerfOverlayVisible;
+    }
+
+    const shouldBeVisible = isStats ? isStatsOverlayVisible : isPerfOverlayVisible;
+
+    // For mobile, we add a class to make it visible, for desktop we just toggle the hidden class
+    if (isMobileActive) {
+        overlayElement.classList.toggle('mobile-active', shouldBeVisible);
+    }
+    overlayElement.classList.toggle('overlay-hidden', !shouldBeVisible);
+
+
+    // Purge plots when stats overlay is hidden
+    if (isStats && !shouldBeVisible) {
+        Plotly.purge('population-graph');
+        Plotly.purge('bee-violin-plot');
+        Plotly.purge('bird-violin-plot');
+    }
+}
+
+
 window.addEventListener('keydown', (event) => {
     if (event.key === 'M' || event.key === 'm') {
-        isStatsOverlayVisible = !isStatsOverlayVisible;
-        statsOverlay.classList.toggle('overlay-hidden', !isStatsOverlayVisible);
-        if (!isStatsOverlayVisible) {
-            Plotly.purge('population-graph');
-            Plotly.purge('bee-violin-plot');
-            Plotly.purge('bird-violin-plot');
-        } else {
-            if (populationGraphDetails.open) drawPopulationGraph();
-            if (beeViolinDetails.open) drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee');
-            if (birdViolinDetails.open) drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird');
-        }
+        toggleOverlay(statsOverlay);
     }
     if (event.key === 'P' || event.key === 'p') {
-        isPerfOverlayVisible = !isPerfOverlayVisible;
-        performanceOverlay.classList.toggle('overlay-hidden', !isPerfOverlayVisible);
+        toggleOverlay(performanceOverlay);
     }
 });
+
+// --- Mobile Navigation ---
+hamburgerBtn.addEventListener('click', () => {
+    hamburgerBtn.classList.toggle('is-active');
+    mobileNav.classList.toggle('is-active');
+});
+
+navLinks.forEach(link => {
+    link.addEventListener('click', () => {
+        const overlayId = link.getAttribute('data-overlay-id');
+        const overlayElement = document.getElementById(overlayId);
+
+        // Hide other mobile-active overlays first
+        if (overlayId === 'overlay' && isPerfOverlayVisible) {
+            toggleOverlay(performanceOverlay, true);
+        } else if (overlayId === 'performance-overlay' && isStatsOverlayVisible) {
+            toggleOverlay(statsOverlay, true);
+        }
+        
+        toggleOverlay(overlayElement, true);
+
+        // Close hamburger menu after selection
+        hamburgerBtn.classList.remove('is-active');
+        mobileNav.classList.remove('is-active');
+    });
+});
+
 
 populationGraphDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawPopulationGraph(); } });
 beeViolinDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee'); } });

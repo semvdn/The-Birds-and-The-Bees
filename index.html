@@ -2,6 +2,8 @@
 <html>
 <head>
     <title>The Birds and the Bees</title>
+    <!-- Critical for responsive design -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/overlay.css">
     <!-- Include Plotly.js for charting -->
@@ -9,7 +11,20 @@
 </head>
 <body>
     <canvas id="treeCanvas"></canvas>
-    <div id="overlay" class="overlay-hidden">
+
+    <!-- Mobile-only Hamburger Menu -->
+    <button id="hamburger-btn" class="hamburger">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+    <nav id="mobile-nav">
+        <button class="nav-link" data-overlay-id="overlay">Toggle Stats Panel</button>
+        <button class="nav-link" data-overlay-id="performance-overlay">Toggle Settings Panel</button>
+    </nav>
+    
+    <!-- Original Overlays -->
+    <div id="overlay" class="stats-overlay desktop-overlay">
         <details>
             <summary>Population Stats</summary>
             <p id="bee-population">Bee Population: 0</p>
@@ -29,7 +44,7 @@
         </details>
     </div>
 
-    <div id="performance-overlay" class="overlay-hidden">
+    <div id="performance-overlay" class="performance-overlay desktop-overlay">
         <h3>Performance & Simulation Settings</h3>
         <div class="setting-row">
             <label for="initial-bees">Initial Bees:</label>
