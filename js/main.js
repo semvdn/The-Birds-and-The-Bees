@@ -471,9 +471,24 @@ function getStaticBranchPosition(plant, branchPoint) {
 
 
 function initialize() {
+    // Stop any existing animation loop
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
     }
+
+    // Reset overlay state variables
+    isStatsOverlayVisible = false;
+    isPerfOverlayVisible = false;
+
+    // Ensure overlay UI elements are in their default hidden state
+    statsOverlay.classList.add('overlay-hidden');
+    statsOverlay.classList.remove('mobile-active');
+    performanceOverlay.classList.add('overlay-hidden');
+    performanceOverlay.classList.remove('mobile-active');
+
+    // Reset hamburger menu UI
+    hamburgerBtn.classList.remove('is-active');
+    mobileNav.classList.remove('is-active');
 
     frame = 0;
     canvas.width = window.innerWidth;
