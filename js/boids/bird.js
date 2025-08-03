@@ -3,7 +3,7 @@ import { NEST_SETTINGS, MAX_BIRDS } from '../presets.js';
 import { preRenderBird } from './drawing.js';
 
 export class Bird extends Boid {
-    constructor(x, y, settings, nest, genes, dna) {
+    constructor(x, y, settings, nest, genes, dna, scale) {
         super(x, y, { ...settings, ...dna });
         this.homeNest = nest;
         this.matingNest = null;
@@ -12,6 +12,7 @@ export class Bird extends Boid {
         this.state = 'HUNTING'; // HUNTING, SEEKING_MATE, GO_TO_NEST
         this.genes = genes;
         this.dna = dna;
+        this.scale = scale;
 
         preRenderBird(this); // Pre-render the bird sprite on creation
     }

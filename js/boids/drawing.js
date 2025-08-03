@@ -32,11 +32,13 @@ export function drawBirdModel(ctx, boid) {
 }
 
 export function preRenderBird(boid) {
-    const scale = 5;
-    const width = 60, height = 40; // Estimated size to fit the bird model
+    const scale = boid.scale;
+    // Dynamically calculate canvas size based on a base size and the dynamic scale
+    const width = 12 * scale; 
+    const height = 8 * scale;
     const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = width;
-    offscreenCanvas.height = height;
+    offscreenCanvas.width = Math.max(1, width);
+    offscreenCanvas.height = Math.max(1, height);
     const oCtx = offscreenCanvas.getContext('2d');
 
     oCtx.save();
@@ -44,7 +46,7 @@ export function preRenderBird(boid) {
 
     // Render facing right version
     oCtx.save();
-    oCtx.scale(scale, -scale); // Flipped Y to match original rendering
+    oCtx.scale(scale, -scale); // Scale the context, then draw with base coordinates
     drawBirdModel(oCtx, boid);
     oCtx.restore();
     boid.preRenderedCanvas = offscreenCanvas;
@@ -79,19 +81,38 @@ export function drawBird(ctx, boid) {
 }
 
 export function preRenderBee(boid) {
-    const width = 12, height = 8;
+    // Define the base (unscaled) size of a bee
+    const baseWidth = 10;
+    const baseHeight = 6;
+    // Use a modifier to make bees proportionally smaller than birds, acted on by the same global scale
+    const beeScaleModifier = 0.2;
+    const finalScale = boid.scale * beeScaleModifier;
+
+    // Calculate the final canvas size needed for the fully scaled sprite
+    const canvasWidth = baseWidth * finalScale;
+    const canvasHeight = baseHeight * finalScale;
+
     const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = width;
-    offscreenCanvas.height = height;
+    offscreenCanvas.width = Math.max(1, canvasWidth);
+    offscreenCanvas.height = Math.max(1, canvasHeight);
     const oCtx = offscreenCanvas.getContext('2d');
 
-    oCtx.translate(width / 2, height / 2);
+    // Move to the center of the new canvas
+    oCtx.translate(offscreenCanvas.width / 2, offscreenCanvas.height / 2);
+    
+    // Scale the entire coordinate system. All subsequent drawings will be scaled up.
+    oCtx.scale(finalScale, finalScale); 
+
+    // Now, draw the bee using its original, UN-SCALED dimensions.
+    // The context's scale will handle the resizing.
     oCtx.fillStyle = '#FFC300';
     oCtx.beginPath();
-    oCtx.ellipse(0, 0, 5, 3, 0, 0, Math.PI * 2);
+    oCtx.ellipse(0, 0, 5, 3, 0, 0, Math.PI * 2); // Use base radius of 5x3
     oCtx.fill();
+
     oCtx.fillStyle = '#000000';
-    oCtx.fillRect(-2, -3, 2, 6);
+    oCtx.fillRect(-2, -3, 2, 6); // Use base dimensions of 2x6
+
     boid.preRenderedCanvas = offscreenCanvas;
 }
 
@@ -119,36 +140,55 @@ export function drawBee(ctx, boid) {
 
 
 export function preRenderHive(hive) {
-    const width = 35, height = 50;
+    const scale = hive.tree.scale * 0.4; // Use tree's scale, with a modifier
+    const baseWidth = 35, baseHeight = 50;
+    const finalWidth = baseWidth * scale;
+    const finalHeight = baseHeight * scale;
+
     const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = width;
-    offscreenCanvas.height = height;
+    offscreenCanvas.width = Math.max(1, finalWidth);
+    offscreenCanvas.height = Math.max(1, finalHeight);
     const oCtx = offscreenCanvas.getContext('2d');
+    
     oCtx.save();
-    oCtx.translate(width / 2, height / 2);
+    oCtx.translate(finalWidth / 2, finalHeight / 2);
+    oCtx.scale(scale, scale); // Scale the context
+
+    // --- Draw using BASE (unscaled) coordinates ---
     const mainColor = '#D4A75A', bandColor = '#A97E33', entranceColor = '#4a381c';
-    const w = 15, h = 22;
+    const w = 15, h = 22; // Base dimensions for drawing
     oCtx.fillStyle = mainColor;
     oCtx.beginPath(); oCtx.ellipse(0, -h * 0.3, w, h * 0.7, 0, 0, Math.PI * 2); oCtx.fill();
     oCtx.beginPath(); oCtx.ellipse(0, h * 0.15, w * 1.2, h * 0.8, 0, 0, Math.PI * 2); oCtx.fill();
     oCtx.beginPath(); oCtx.ellipse(0, h * 0.5, w * 0.9, h * 0.6, 0, 0, Math.PI * 2); oCtx.fill();
-    oCtx.strokeStyle = bandColor; oCtx.lineWidth = 2;
+    
+    oCtx.strokeStyle = bandColor; 
+    oCtx.lineWidth = 2 / scale; // Counter-scale line width
     oCtx.beginPath(); oCtx.moveTo(-w * 0.9, -h * 0.05); oCtx.quadraticCurveTo(0, 0, w * 0.9, -h * 0.05); oCtx.stroke();
     oCtx.beginPath(); oCtx.moveTo(-w * 1.1, h * 0.3); oCtx.quadraticCurveTo(0, h * 0.45, w * 1.1, h * 0.3); oCtx.stroke();
     oCtx.beginPath(); oCtx.moveTo(-w * 0.7, h * 0.6); oCtx.quadraticCurveTo(0, h * 0.75, w * 0.7, h * 0.6); oCtx.stroke();
-    oCtx.fillStyle = entranceColor; oCtx.beginPath(); oCtx.arc(0, 12, 4, 0, Math.PI * 2); oCtx.fill();
+    
+    oCtx.fillStyle = entranceColor; 
+    oCtx.beginPath(); oCtx.arc(0, 12, 4, 0, Math.PI * 2); oCtx.fill();
+    
     oCtx.restore();
     hive.preRenderedCanvas = offscreenCanvas;
 }
+
 export function preRenderNest(nest) {
-    const size = nest.radius * 3;
+    const scale = nest.tree.scale * 0.5;
+    const finalSize = nest.radius * 3 * scale;
+
     const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = size;
-    offscreenCanvas.height = size;
+    offscreenCanvas.width = Math.max(1, finalSize);
+    offscreenCanvas.height = Math.max(1, finalSize);
     const oCtx = offscreenCanvas.getContext('2d');
+    
     oCtx.save();
-    oCtx.translate(size / 2, size / 2);
-    oCtx.lineWidth = 1.5;
+    oCtx.translate(finalSize / 2, finalSize / 2);
+    oCtx.scale(scale, scale); // Scale the context
+
+    oCtx.lineWidth = 1.5 / scale; // Counter-scale line width
     for (const twig of nest.twigs) {
         oCtx.strokeStyle = twig.color;
         oCtx.beginPath();
@@ -159,6 +199,7 @@ export function preRenderNest(nest) {
     oCtx.restore();
     nest.preRenderedCanvas = offscreenCanvas;
 }
+
 export function drawHive(ctx, hive) {
     if (!hive.preRenderedCanvas) return;
     ctx.save();
@@ -166,6 +207,7 @@ export function drawHive(ctx, hive) {
     ctx.drawImage(hive.preRenderedCanvas, -hive.preRenderedCanvas.width / 2, -hive.preRenderedCanvas.height / 2);
     ctx.restore();
 }
+
 export function drawHiveProgressBar(ctx, hive, nectarGoal) {
     const barWidth = 30, barHeight = 5, barX = hive.position.x - (barWidth / 2), barY = hive.position.y - 40;
     ctx.fillStyle = '#555555'; ctx.fillRect(barX, barY, barWidth, barHeight);
@@ -173,21 +215,32 @@ export function drawHiveProgressBar(ctx, hive, nectarGoal) {
     const progressBarWidth = barWidth * Math.min(1, progress);
     ctx.fillStyle = '#00FF00'; ctx.fillRect(barX, barY, progressBarWidth, barHeight);
 }
+
 export function drawNest(ctx, nest) {
     if (!nest.preRenderedCanvas) return;
     ctx.save();
     ctx.translate(nest.position.x, nest.position.y);
-    ctx.translate(0, -nest.radius * 1.5);
+    // Position the nest correctly based on its new dynamic, pre-rendered size
+    ctx.translate(0, -nest.preRenderedCanvas.height / 3); 
     ctx.drawImage(nest.preRenderedCanvas, -nest.preRenderedCanvas.width / 2, -nest.preRenderedCanvas.height / 2);
+    
     if (nest.hasEgg && nest.hatchingCountdown > 0) {
+        // Also scale the egg to match the nest's scale
         drawEgg(ctx, nest);
     }
     ctx.restore();
 }
+
 function drawEgg(ctx, nest) {
+    const scale = nest.tree.scale * 0.4;
     ctx.save();
-    ctx.translate(0, -nest.radius * 0.1);
-    ctx.fillStyle = '#F0E68C'; ctx.beginPath();
+    // The context is already at the nest's anchor point. We just need to scale and draw.
+    ctx.scale(scale, scale);
+    ctx.translate(0, -nest.radius * 0.01); // Use base radius for positioning
+    
+    ctx.fillStyle = '#F0E68C'; 
+    ctx.beginPath();
+    // Use base radius for egg dimensions
     ctx.ellipse(0, 0, nest.radius * 0.6, nest.radius * 0.8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
