@@ -8,17 +8,21 @@ export class Boid {
         
         // Make a mutable copy of settings to avoid modifying the global preset object
         this.settings = { ...settings };
+        
+        // --- Store the original base speed before any modifications ---
+        this.baseMaxSpeed = this.settings.maxSpeed;
 
-        // --- SOLUTION: Scale behavioral and physical parameters by the world scale ---
+        // --- Scale behavioral and physical parameters by the world scale ---
         if (this.settings.visualRange) this.settings.visualRange *= worldScale;
         if (this.settings.separationDistance) this.settings.separationDistance *= worldScale;
         if (this.settings.killRange) this.settings.killRange *= worldScale;
+        // The actual speed is now calculated live in applyLiveSettings, but we set an initial value
         if (this.settings.maxSpeed) this.settings.maxSpeed *= worldScale;
-        // ---
+        
 
         // --- Apply Lifetime Variation ---
         const baseLifetime = this.settings.maxLifetime;
-        const variation = (Math.random() - 0.5) * 2 * LIFETIME_VARIATION_PERCENT; // e.g., a value between -0.2 and +0.2
+        const variation = (Math.random() - 0.5) * 2 * LIFETIME_VARIATION_PERCENT;
         this.settings.maxLifetime = baseLifetime * (1 + variation);
         // ---
 
@@ -181,7 +185,6 @@ export class Boid {
 
     avoidEdges(world) {
         const { canvas, groundHeight } = world;
-        // --- SOLUTION: Scale the hardcoded edge margins by the world scale ---
         const margin = 50 * this.worldScale; 
         const groundMargin = 70 * this.worldScale;
 

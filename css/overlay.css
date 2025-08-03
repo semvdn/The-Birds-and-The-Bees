@@ -26,7 +26,7 @@
 }
 
 .performance-overlay {
-    width: 300px;
+    width: 350px; /* Increased width for sliders */
     top: 10px;
     right: 10px;
 }
@@ -39,6 +39,21 @@
     margin-bottom: 15px;
 }
 
+/* --- Fieldset for grouping settings --- */
+fieldset {
+    border: 1px solid #777;
+    border-radius: 4px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+}
+
+legend {
+    padding: 0 10px;
+    font-weight: bold;
+    color: #ddd;
+}
+
+
 .setting-row {
     display: flex;
     justify-content: space-between;
@@ -48,6 +63,8 @@
 
 .setting-row label {
     font-weight: bold;
+    flex-shrink: 0;
+    margin-right: 10px;
 }
 
 .performance-overlay input[type="number"],
@@ -60,14 +77,27 @@
     border-radius: 3px;
 }
 
+.performance-overlay input[type="range"] {
+    flex-grow: 1;
+    margin: 0 10px;
+}
+
 .performance-overlay input[type="checkbox"] {
     width: 18px;
     height: 18px;
+    margin-left: auto; /* Pushes checkbox to the right */
+}
+
+.setting-row span {
+    width: 40px;
+    text-align: right;
+    font-family: monospace;
+    font-size: 0.9em;
 }
 
 .button-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around; /* Space out buttons */
     margin-top: 20px;
 }
 
@@ -77,14 +107,23 @@
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, opacity 0.2s;
+    flex-basis: 48%; /* Each button takes up almost half */
 }
 
-#apply-settings {
+/* --- Style for disabled buttons --- */
+.performance-overlay button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+
+#apply-settings, #apply-live-settings {
     background-color: #4CAF50; /* Green */
     color: white;
 }
-#apply-settings:hover {
+#apply-settings:hover, #apply-live-settings:hover {
     background-color: #45a049;
 }
 
@@ -121,6 +160,10 @@ summary {
 /* Graph container styling */
 .js-plotly-plot .plotly .modebar {
     display: none !important;
+}
+
+.hidden {
+    display: none;
 }
 
 

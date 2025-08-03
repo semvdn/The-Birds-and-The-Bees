@@ -28,15 +28,27 @@ const birdPopulationElement = document.getElementById('bird-population');
 const populationGraphDetails = document.querySelector('#population-graph').closest('details');
 const beeViolinDetails = document.querySelector('#bee-violin-plot').closest('details');
 const birdViolinDetails = document.querySelector('#bird-violin-plot').closest('details');
-// Performance overlay elements
+
+// --- Performance overlay elements ---
+// Restart Required
 const initialBeesInput = document.getElementById('initial-bees');
 const maxBeesInput = document.getElementById('max-bees');
 const initialBirdsInput = document.getElementById('initial-birds');
 const maxBirdsInput = document.getElementById('max-birds');
-const fpsSelect = document.getElementById('fps-select');
-const windToggle = document.getElementById('wind-toggle');
 const applySettingsBtn = document.getElementById('apply-settings');
 const resetSettingsBtn = document.getElementById('reset-settings');
+// Live Settings
+const fpsSelect = document.getElementById('fps-select');
+const windToggle = document.getElementById('wind-toggle');
+const windSliderContainer = document.getElementById('wind-slider-container');
+const windSpeedSlider = document.getElementById('wind-speed-slider');
+const windSpeedValue = document.getElementById('wind-speed-value');
+const birdSpeedSlider = document.getElementById('bird-speed-slider');
+const birdSpeedValue = document.getElementById('bird-speed-value');
+const beeSpeedSlider = document.getElementById('bee-speed-slider');
+const beeSpeedValue = document.getElementById('bee-speed-value');
+const applyLiveSettingsBtn = document.getElementById('apply-live-settings');
+
 // Mobile UI Elements
 const hamburgerBtn = document.getElementById('hamburger-btn');
 const mobileNav = document.getElementById('mobile-nav');
@@ -53,16 +65,17 @@ let isPerfOverlayVisible = false;
 
 // --- Simulation Settings ---
 let simSettings = {};
+let activeSimSettings = {}; // Holds the state the sim is currently running with
 let currentWindStrength = DEFAULT_WIND_STRENGTH;
-let G_BOID_SCALE = 5.0; // Global visual scale for birds/bees, calculated on init
-let G_WORLD_SCALE = 1.0; // Global behavior scale for boids, calculated on init
+let G_BOID_SCALE = 5.0; 
+let G_WORLD_SCALE = 1.0; 
 
 // --- Frame Rate Control ---
 let animationFrameId;
 let lastFrameTime = 0;
 let accumulator = 0;
-const FIXED_TIMESTEP_MS = 1000 / 60; // Simulation logic runs at a fixed 60Hz
-let renderFpsInterval, renderThen; // For throttling rendering only
+const FIXED_TIMESTEP_MS = 1000 / 60; 
+let renderFpsInterval, renderThen;
 
 
 // --- Data for Graphs ---
@@ -489,10 +502,16 @@ function initialize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // --- Dynamic Scaling Logic for World and Boids ---
-    const baseHeight = 1080; // The resolution our presets are balanced for
+    const baseHeight = 1080;
     G_WORLD_SCALE = canvas.height / baseHeight;
-    G_BOID_SCALE = Math.max(3, 6 * G_WORLD_SCALE); // Visual scale is based on world scale
+    G_BOID_SCALE = Math.max(3, 6 * G_WORLD_SCALE); 
+    
+    currentWindStrength = simSettings.windEnabled ? simSettings.windSpeed : 0;
+    
+    lastFrameTime = performance.now();
+    accumulator = 0;
+    renderFpsInterval = 1000 / simSettings.fps;
+    renderThen = Date.now();
 
     const aspectRatio = canvas.width / canvas.height;
     const PORTRAIT_ASPECT_RATIO = 0.7;
@@ -509,20 +528,11 @@ function initialize() {
         const ratio = (aspectRatio - PORTRAIT_ASPECT_RATIO) / (WIDESCREEN_ASPECT_RATIO - PORTRAIT_ASPECT_RATIO);
         numTrees = Math.round(MIN_TREES_COUNT + ratio * (MAX_TREES_COUNT - MIN_TREES_COUNT));
     }
-    numTrees = Math.max(MIN_TREES_COUNT, numTrees); // Ensure at least the minimum
+    numTrees = Math.max(MIN_TREES_COUNT, numTrees);
 
     const numShrubs = Math.round(numTrees * 3.5);
     const numWeeds = Math.round(numTrees * 10);
-    // --- End of Dynamic Scaling Logic ---
     
-    currentWindStrength = simSettings.windEnabled ? DEFAULT_WIND_STRENGTH : 0;
-    
-    lastFrameTime = performance.now();
-    accumulator = 0;
-    renderFpsInterval = 1000 / simSettings.fps;
-    renderThen = Date.now();
-
-
     const cellSize = 100;
     birdGrid = new Grid(canvas.width, canvas.height, cellSize);
     beeGrid = new Grid(canvas.width, canvas.height, cellSize);
@@ -607,7 +617,7 @@ function initialize() {
     }
 
     if (generationAttempts >= maxAttempts) {
-        console.warn(`Failed to generate a world with at least 2 nests and 2 hives after ${maxAttempts} attempts. The simulation may be unbalanced.`);
+        console.warn(`Failed to generate a world with at least 2 nests and 2 hives after ${maxAttempts} attempts.`);
     }
 
     shrubs = []; weeds = []; flowers = [];
@@ -670,6 +680,9 @@ function initialize() {
         }
     }
 
+    applyLiveSettings();
+    activeSimSettings = { ...simSettings }; // Sync active state after initialization
+    checkSettingsState(); // Disable buttons
     gameLoop(performance.now());
 }
 
@@ -682,7 +695,10 @@ function saveSettings() {
         initialBirds: parseInt(initialBirdsInput.value, 10),
         maxBirds: parseInt(maxBirdsInput.value, 10),
         fps: parseInt(fpsSelect.value, 10),
-        windEnabled: windToggle.checked
+        windEnabled: windToggle.checked,
+        windSpeed: parseFloat(windSpeedSlider.value),
+        birdSpeedMultiplier: parseFloat(birdSpeedSlider.value),
+        beeSpeedMultiplier: parseFloat(beeSpeedSlider.value)
     };
     localStorage.setItem('simSettings', JSON.stringify(simSettings));
 }
@@ -692,28 +708,69 @@ function loadSettings() {
     if (saved) {
         simSettings = JSON.parse(saved);
     } else {
-        // Load defaults
         simSettings = {
-            initialBees: INITIAL_BEES,
-            maxBees: MAX_BEES,
-            initialBirds: INITIAL_BIRDS,
-            maxBirds: MAX_BIRDS,
-            fps: 60,
-            windEnabled: true
+            initialBees: INITIAL_BEES, maxBees: MAX_BEES,
+            initialBirds: INITIAL_BIRDS, maxBirds: MAX_BIRDS,
+            fps: 60, windEnabled: true, windSpeed: DEFAULT_WIND_STRENGTH,
+            birdSpeedMultiplier: 1.0, beeSpeedMultiplier: 1.0
         };
     }
-    // Update UI elements with loaded settings
+    // Update UI elements
     initialBeesInput.value = simSettings.initialBees;
     maxBeesInput.value = simSettings.maxBees;
     initialBirdsInput.value = simSettings.initialBirds;
     maxBirdsInput.value = simSettings.maxBirds;
     fpsSelect.value = simSettings.fps;
     windToggle.checked = simSettings.windEnabled;
+    windSpeedSlider.value = simSettings.windSpeed;
+    windSpeedValue.textContent = simSettings.windSpeed.toFixed(1);
+    birdSpeedSlider.value = simSettings.birdSpeedMultiplier;
+    birdSpeedValue.textContent = simSettings.birdSpeedMultiplier.toFixed(1) + 'x';
+    beeSpeedSlider.value = simSettings.beeSpeedMultiplier;
+    beeSpeedValue.textContent = simSettings.beeSpeedMultiplier.toFixed(1) + 'x';
+    windSliderContainer.classList.toggle('hidden', !simSettings.windEnabled);
+
+    activeSimSettings = { ...simSettings }; // Set the initial active state
 }
 
 function resetSettings() {
     localStorage.removeItem('simSettings');
     loadSettings();
+    checkSettingsState(); // Check button states after loading defaults
+}
+
+function applyLiveSettings() {
+    saveSettings(); 
+    renderFpsInterval = 1000 / simSettings.fps;
+    currentWindStrength = simSettings.windEnabled ? simSettings.windSpeed : 0;
+    const birdSpeedMultiplier = simSettings.birdSpeedMultiplier;
+    for(const bird of birds) {
+        bird.settings.maxSpeed = bird.baseMaxSpeed * birdSpeedMultiplier * bird.worldScale;
+    }
+    const beeSpeedMultiplier = simSettings.beeSpeedMultiplier;
+    for(const bee of bees) {
+        bee.settings.maxSpeed = bee.baseMaxSpeed * beeSpeedMultiplier * bee.worldScale;
+    }
+    activeSimSettings = { ...simSettings }; // Update active state
+    checkSettingsState(); // Re-check button states
+}
+
+// Compares UI values to active settings and toggles button disabled state
+function checkSettingsState() {
+    let restartDirty = false;
+    if (parseInt(initialBeesInput.value, 10) !== activeSimSettings.initialBees) restartDirty = true;
+    if (parseInt(maxBeesInput.value, 10) !== activeSimSettings.maxBees) restartDirty = true;
+    if (parseInt(initialBirdsInput.value, 10) !== activeSimSettings.initialBirds) restartDirty = true;
+    if (parseInt(maxBirdsInput.value, 10) !== activeSimSettings.maxBirds) restartDirty = true;
+    applySettingsBtn.disabled = !restartDirty;
+
+    let liveDirty = false;
+    if (parseInt(fpsSelect.value, 10) !== activeSimSettings.fps) liveDirty = true;
+    if (windToggle.checked !== activeSimSettings.windEnabled) liveDirty = true;
+    if (parseFloat(windSpeedSlider.value) !== activeSimSettings.windSpeed) liveDirty = true;
+    if (parseFloat(birdSpeedSlider.value) !== activeSimSettings.birdSpeedMultiplier) liveDirty = true;
+    if (parseFloat(beeSpeedSlider.value) !== activeSimSettings.beeSpeedMultiplier) liveDirty = true;
+    applyLiveSettingsBtn.disabled = !liveDirty;
 }
 
 applySettingsBtn.addEventListener('click', () => {
@@ -723,15 +780,41 @@ applySettingsBtn.addEventListener('click', () => {
 
 resetSettingsBtn.addEventListener('click', () => {
     resetSettings();
-    saveSettings();
-    initialize();
+    // No restart, just reset UI. Let user click apply.
 });
+
+applyLiveSettingsBtn.addEventListener('click', applyLiveSettings);
 
 // --- UI Event Listeners ---
 window.addEventListener('resize', () => {
     saveSettings();
     initialize();
 });
+
+windToggle.addEventListener('change', () => {
+    windSliderContainer.classList.toggle('hidden', !windToggle.checked);
+    checkSettingsState();
+});
+
+// Add listeners to all controls to check state on change
+const allControls = [
+    initialBeesInput, maxBeesInput, initialBirdsInput, maxBirdsInput,
+    fpsSelect, windToggle, windSpeedSlider, birdSpeedSlider, beeSpeedSlider
+];
+allControls.forEach(control => control.addEventListener('input', checkSettingsState));
+
+
+// Real-time value displays for sliders
+windSpeedSlider.addEventListener('input', () => {
+    windSpeedValue.textContent = parseFloat(windSpeedSlider.value).toFixed(1);
+});
+birdSpeedSlider.addEventListener('input', () => {
+    birdSpeedValue.textContent = parseFloat(birdSpeedSlider.value).toFixed(1) + 'x';
+});
+beeSpeedSlider.addEventListener('input', () => {
+    beeSpeedValue.textContent = parseFloat(beeSpeedSlider.value).toFixed(1) + 'x';
+});
+
 
 function toggleOverlay(overlayElement) {
     const isStats = overlayElement.id === 'overlay';
@@ -763,18 +846,16 @@ function setupUI() {
         document.body.classList.add('touch-device');
     } else {
         document.body.classList.add('no-touch-device');
-        // Desktop-only keydown listeners
         window.addEventListener('keydown', (event) => {
             if (event.key === 'M' || event.key === 'm') {
                 toggleOverlay(statsOverlay);
             }
-            if (event.key === 'P' || event.key === 'p') {
+            if (event.key === 'p' || event.key === 'p') {
                 toggleOverlay(performanceOverlay);
             }
         });
     }
 
-    // Hamburger menu is only for touch devices
     hamburgerBtn.addEventListener('click', () => {
         hamburgerBtn.classList.toggle('is-active');
         mobileNav.classList.toggle('is-active');
@@ -786,10 +867,10 @@ function setupUI() {
             const overlayElement = document.getElementById(overlayId);
 
             if (overlayId === 'overlay') {
-                if(isPerfOverlayVisible) toggleOverlay(performanceOverlay); // Hide other if open
+                if(isPerfOverlayVisible) toggleOverlay(performanceOverlay); 
                 toggleOverlay(statsOverlay);
             } else if (overlayId === 'performance-overlay') {
-                if(isStatsOverlayVisible) toggleOverlay(statsOverlay); // Hide other if open
+                if(isStatsOverlayVisible) toggleOverlay(statsOverlay); 
                 toggleOverlay(performanceOverlay);
             }
             
