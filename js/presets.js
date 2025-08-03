@@ -1,6 +1,5 @@
 // --- GLOBAL ANIMATION CONSTANTS ---
-export const MIN_TREES = 4;
-export const MAX_TREES = 6;
+// Tree count is now calculated dynamically based on aspect ratio in main.js
 export const GLOBAL_WIND_STRENGTH = 2.0;
 export const SHRUB_WIND_MULTIPLIER = 2.0;
 export const WEED_WIND_MULTIPLIER = 4.0;

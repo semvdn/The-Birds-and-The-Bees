@@ -1,6 +1,5 @@
 import {
-    MIN_TREES, MAX_TREES, PASTEL_FLOWER_COLORS,
-    TREE_PRESETS, SHRUB_PRESETS, WEED_PRESETS,
+    PASTEL_FLOWER_COLORS, TREE_PRESETS, SHRUB_PRESETS, WEED_PRESETS,
     BIRD_SETTINGS, BEE_SETTINGS, HIVE_SETTINGS, NEST_SETTINGS,
     INITIAL_BEES, MAX_BEES, INITIAL_BIRDS, MAX_BIRDS, 
     MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH as DEFAULT_WIND_STRENGTH, MIN_FLOWERS,
@@ -471,28 +470,44 @@ function getStaticBranchPosition(plant, branchPoint) {
 
 
 function initialize() {
-    // Stop any existing animation loop
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
     }
 
-    // Reset overlay state variables
     isStatsOverlayVisible = false;
     isPerfOverlayVisible = false;
-
-    // Ensure overlay UI elements are in their default hidden state
     statsOverlay.classList.add('overlay-hidden');
     statsOverlay.classList.remove('mobile-active');
     performanceOverlay.classList.add('overlay-hidden');
     performanceOverlay.classList.remove('mobile-active');
-
-    // Reset hamburger menu UI
     hamburgerBtn.classList.remove('is-active');
     mobileNav.classList.remove('is-active');
 
     frame = 0;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+
+    // --- Dynamic Scaling Logic based on Aspect Ratio ---
+    const aspectRatio = canvas.width / canvas.height;
+    const PORTRAIT_ASPECT_RATIO = 0.7;
+    const WIDESCREEN_ASPECT_RATIO = 1.8;
+    const MIN_TREES_COUNT = 2;
+    const MAX_TREES_COUNT = 6;
+    
+    let numTrees;
+    if (aspectRatio <= PORTRAIT_ASPECT_RATIO) {
+        numTrees = MIN_TREES_COUNT;
+    } else if (aspectRatio >= WIDESCREEN_ASPECT_RATIO) {
+        numTrees = MAX_TREES_COUNT;
+    } else {
+        const ratio = (aspectRatio - PORTRAIT_ASPECT_RATIO) / (WIDESCREEN_ASPECT_RATIO - PORTRAIT_ASPECT_RATIO);
+        numTrees = Math.round(MIN_TREES_COUNT + ratio * (MAX_TREES_COUNT - MIN_TREES_COUNT));
+    }
+    numTrees = Math.max(MIN_TREES_COUNT, numTrees); // Ensure at least the minimum
+
+    const numShrubs = Math.round(numTrees * 3.5);
+    const numWeeds = Math.round(numTrees * 10);
+    // --- End of Dynamic Scaling Logic ---
     
     currentWindStrength = simSettings.windEnabled ? DEFAULT_WIND_STRENGTH : 0;
     
@@ -518,7 +533,6 @@ function initialize() {
         nests = [];
         let allPotentialHomes = [];
 
-        const numTrees = MIN_TREES + Math.floor(Math.random() * (MAX_TREES - MIN_TREES + 1));
         const spacingTrees = canvas.width / numTrees;
         for (let i = 0; i < numTrees; i++) {
             const preset = TREE_PRESETS[Math.floor(Math.random() * TREE_PRESETS.length)];
@@ -594,7 +608,7 @@ function initialize() {
     birds = []; bees = [];
 
     const flowerPresets = SHRUB_PRESETS.filter(p => p.type === 'flower');
-    const numShrubs = 15; const spacingShrubs = canvas.width / numShrubs;
+    const spacingShrubs = canvas.width / numShrubs;
     for (let i = 0; i < numShrubs; i++) {
         let preset = (i < MIN_FLOWERS && flowerPresets.length > 0) ? flowerPresets[Math.floor(Math.random() * flowerPresets.length)] : SHRUB_PRESETS[Math.floor(Math.random() * SHRUB_PRESETS.length)];
         const plant = setupPlantData(preset, 'shrub');
@@ -615,7 +629,7 @@ function initialize() {
         }
         shrubs.push(plant);
     }
-    const numWeeds = 40; const spacingWeeds = canvas.width / numWeeds;
+    const spacingWeeds = canvas.width / numWeeds;
     for (let i = 0; i < numWeeds; i++) {
         const preset = WEED_PRESETS[Math.floor(Math.random() * WEED_PRESETS.length)];
         const plant = setupPlantData(preset, 'weed');
