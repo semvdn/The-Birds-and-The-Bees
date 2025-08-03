@@ -221,7 +221,7 @@ export function drawNest(ctx, nest) {
 }
 
 function drawEgg(ctx, nest, worldScale) {
-    const scale = worldScale; // Use same scale calculation as nest
+    const scale = worldScale * 1.2; // Use same scale calculation as nest
     ctx.save();
     ctx.scale(scale, scale);
     ctx.translate(0, -nest.radius * 0.1); 

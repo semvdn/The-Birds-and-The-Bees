@@ -16,6 +16,7 @@ import {
     preRenderHive, preRenderNest 
 } from './boids/drawing.js';
 import { Grid } from './boids/grid.js';
+import { generateFavicon } from './favicon.js';
 
 const canvas = document.getElementById('treeCanvas');
 const ctx = canvas.getContext('2d');
@@ -591,7 +592,7 @@ function initialize() {
                 if (i < numHives) {
                     const newHive = { ...homeInfo, nectar: 0, dnaPool: {}, contributorCount: 0, knownFlowerLocations: [], beesEnRoute: 0 };
                     for (const key in BEE_DNA_TEMPLATE) newHive.dnaPool[key] = 0;
-                    newHive.worldScale = G_WORLD_SCALE; // Attach world scale
+                    newHive.worldScale = G_WORLD_SCALE; 
                     hives.push(newHive);
                     preRenderHive(newHive);
                 } else {
@@ -604,7 +605,7 @@ function initialize() {
                         twig.cpX = (twig.x1 + twig.x2) / 2 + (Math.random() - 0.5) * 10; twig.cpY = (twig.y1 + twig.y2) / 2 + (Math.random() - 0.5) * 5;
                         newNest.twigs.push(twig);
                     }
-                    newNest.worldScale = G_WORLD_SCALE; // Attach world scale
+                    newNest.worldScale = G_WORLD_SCALE; 
                     nests.push(newNest);
                     preRenderNest(newNest);
                 }
@@ -873,6 +874,8 @@ function setupUI() {
             mobileNav.classList.remove('is-active');
         });
     });
+
+    generateFavicon(); // Generate the icon on initial UI setup
 }
 
 
