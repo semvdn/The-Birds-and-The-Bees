@@ -2,10 +2,11 @@ import {
     MIN_TREES, MAX_TREES, PASTEL_FLOWER_COLORS,
     TREE_PRESETS, SHRUB_PRESETS, WEED_PRESETS,
     BIRD_SETTINGS, BEE_SETTINGS, HIVE_SETTINGS, NEST_SETTINGS,
-    MAX_BEES, MAX_BIRDS, MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH, MIN_FLOWERS,
+    INITIAL_BEES, MAX_BEES, INITIAL_BIRDS, MAX_BIRDS, 
+    MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH as DEFAULT_WIND_STRENGTH, MIN_FLOWERS,
     BIRD_GENES, PARENT_PRESETS, MUTATION_RATE, MUTATION_AMOUNT,
     BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE, GROUND_HEIGHT,
-    BEE_POPULATION_THRESHOLD, HIVE_DANGER_RADIUS, HIVE_DANGER_WEIGHT
+    BEE_POPULATION_THRESHOLD
 } from './presets.js';
 import { setupPlantData } from './lsystem.js';
 import { preRenderPlant, drawPlant } from './drawing.js';
@@ -19,25 +20,49 @@ import { Grid } from './boids/grid.js';
 
 const canvas = document.getElementById('treeCanvas');
 const ctx = canvas.getContext('2d');
-const overlay = document.getElementById('overlay');
+// Overlays
+const statsOverlay = document.getElementById('overlay');
+const performanceOverlay = document.getElementById('performance-overlay');
+// Stats overlay elements
 const beePopulationElement = document.getElementById('bee-population');
 const birdPopulationElement = document.getElementById('bird-population');
-
 const populationGraphDetails = document.querySelector('#population-graph').closest('details');
 const beeViolinDetails = document.querySelector('#bee-violin-plot').closest('details');
 const birdViolinDetails = document.querySelector('#bird-violin-plot').closest('details');
+// Performance overlay elements
+const initialBeesInput = document.getElementById('initial-bees');
+const maxBeesInput = document.getElementById('max-bees');
+const initialBirdsInput = document.getElementById('initial-birds');
+const maxBirdsInput = document.getElementById('max-birds');
+const fpsSelect = document.getElementById('fps-select');
+const windToggle = document.getElementById('wind-toggle');
+const applySettingsBtn = document.getElementById('apply-settings');
+const resetSettingsBtn = document.getElementById('reset-settings');
+
 
 let trees = [], shrubs = [], weeds = [], flowers = [];
 let birds = [], bees = [];
 let hives = [], nests = [];
 let frame = 0;
 let birdGrid, beeGrid;
-let isOverlayVisible = false;
+let isStatsOverlayVisible = false;
+let isPerfOverlayVisible = false;
+
+// --- Simulation Settings ---
+let simSettings = {};
+let currentWindStrength = DEFAULT_WIND_STRENGTH;
+
+// --- Frame Rate Control ---
+let animationFrameId;
+let lastFrameTime = 0;
+let accumulator = 0;
+const FIXED_TIMESTEP_MS = 1000 / 60; // Simulation logic runs at a fixed 60Hz
+let renderFpsInterval, renderThen; // For throttling rendering only
+
 
 // --- Data for Graphs ---
 let populationHistory = { time: [], bees: [], birds: [] };
 let traitHistory = {};
-
 
 function initializeTraitHistory() {
     traitHistory = { time: [], birds: {}, bees: {} };
@@ -148,99 +173,112 @@ function recalculateHomePositions() {
     const allHomes = [...hives, ...nests];
     for (const home of allHomes) {
         const plant = home.tree;
-        const trunkSway = Math.sin((frame / 220) + plant.x / 50) * 0.015 * GLOBAL_WIND_STRENGTH;
+        const trunkSway = Math.sin((frame / 220) + plant.x / 50) * 0.015 * currentWindStrength;
         
-        // Apply rotation to the cached relative position
         const cosSway = Math.cos(trunkSway);
         const sinSway = Math.sin(trunkSway);
         const rotatedX = home.relativePos.x * cosSway - home.relativePos.y * sinSway;
         const rotatedY = home.relativePos.x * sinSway + home.relativePos.y * cosSway;
 
-        // Add the rotated position to the tree's base to get the new world position
         home.position.x = plant.x + rotatedX;
         home.position.y = canvas.height + rotatedY;
     }
 }
 
-function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// The new decoupled game loop
+function gameLoop(timestamp) {
+    animationFrameId = requestAnimationFrame(gameLoop);
+
+    const deltaTime = timestamp - lastFrameTime;
+    lastFrameTime = timestamp;
+    accumulator += deltaTime;
+
+    // Run simulation updates for all the time that has passed
+    while (accumulator >= FIXED_TIMESTEP_MS) {
+        simulationUpdate();
+        accumulator -= FIXED_TIMESTEP_MS;
+    }
+
+    // Throttle rendering to the user's selected FPS
+    const renderNow = Date.now();
+    const renderElapsed = renderNow - renderThen;
+
+    if (renderElapsed > renderFpsInterval) {
+        renderThen = renderNow - (renderElapsed % renderFpsInterval);
+        render();
+    }
+}
+
+// All simulation logic updates happen here, at a fixed rate
+function simulationUpdate() {
     frame++;
 
+    // Only collect data periodically for performance.
     if (frame % 120 === 0) {
-        const currentTime = frame / 60;
-        
-        populationHistory.time.push(currentTime);
-        populationHistory.bees.push(bees.length);
-        populationHistory.birds.push(birds.length);
-        if (populationHistory.time.length > 100) {
-            populationHistory.time.shift();
-            populationHistory.bees.shift();
-            populationHistory.birds.shift();
-        }
-
-        traitHistory.time.push(currentTime);
-        Object.keys(BIRD_DNA_TEMPLATE).forEach(trait => {
-            const values = birds.filter(b => b.isAlive).map(b => b.dna[trait]);
-            if (values.length > 0) {
-                traitHistory.birds[trait].mean.push(values.reduce((a, b) => a + b, 0) / values.length);
-                traitHistory.birds[trait].min.push(Math.min(...values));
-                traitHistory.birds[trait].max.push(Math.max(...values));
-            } else {
-                traitHistory.birds[trait].mean.push(null);
-                traitHistory.birds[trait].min.push(null);
-                traitHistory.birds[trait].max.push(null);
-            }
-        });
-        Object.keys(BEE_DNA_TEMPLATE).forEach(trait => {
-            const values = bees.filter(b => b.isAlive).map(b => b.dna[trait]);
-            if (values.length > 0) {
-                traitHistory.bees[trait].mean.push(values.reduce((a, b) => a + b, 0) / values.length);
-                traitHistory.bees[trait].min.push(Math.min(...values));
-                traitHistory.bees[trait].max.push(Math.max(...values));
-            } else {
-                traitHistory.bees[trait].mean.push(null);
-                traitHistory.bees[trait].min.push(null);
-                traitHistory.bees[trait].max.push(null);
-            }
-        });
+        updateGraphData();
     }
 
     birdGrid.clear();
     for (const bird of birds) if (bird.isAlive) birdGrid.insert(bird);
     beeGrid.clear();
     for (const bee of bees) if (bee.isAlive) beeGrid.insert(bee);
+    
     recalculateHomePositions();
+    
     const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid, groundHeight: GROUND_HEIGHT };
+    
     for (const flower of flowers) {
         for (const petal of flower.petalPoints) {
             petal.nectar = Math.min(1, petal.nectar + 0.0005);
         }
     }
-    const allPlants = [...trees, ...shrubs, ...weeds];
-    allPlants.sort((a, b) => b.x - a.x);
-    for (const plant of allPlants) {
-        drawPlant(plant, ctx, canvas, frame);
-        if (plant.plantType === 'tree') {
-            for (const nest of nests) if (nest.tree === plant) drawNest(ctx, nest);
-            for (const hive of hives) if (hive.tree === plant) drawHive(ctx, hive);
-        }
-    }
-    for (const bird of birds) { bird.update(world); drawBird(ctx, bird); }
-    for (const bee of bees) { bee.update(world); drawBee(ctx, bee); }
+
+    for (const bird of birds) { bird.update(world); }
+    for (const bee of bees) { bee.update(world); }
     
     bees = bees.filter(bee => !bee.vanished);
     birds = birds.filter(bird => !bird.vanished);
 
     if (birds.length < 2 || bees.length < 2) {
-        frame = 0;
-        initialize();
-        requestAnimationFrame(animate); 
+        initialize(); // This will cancel the current loop and restart
         return; 
     }
 
+    handleBeeReproduction();
+    handleBirdReproduction();
+}
+
+// All drawing logic happens here, throttled to the selected FPS
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const allPlants = [...trees, ...shrubs, ...weeds];
+    allPlants.sort((a, b) => b.x - a.x);
+    for (const plant of allPlants) {
+        drawPlant(plant, ctx, canvas, frame, currentWindStrength);
+        if (plant.plantType === 'tree') {
+            for (const nest of nests) if (nest.tree === plant) drawNest(ctx, nest);
+            for (const hive of hives) if (hive.tree === plant) drawHive(ctx, hive);
+        }
+    }
+
+    for (const bird of birds) { drawBird(ctx, bird); }
+    for (const bee of bees) { drawBee(ctx, bee); }
+    
+    ctx.fillStyle = '#4a5742'; 
+    ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+    
+    if (isStatsOverlayVisible) {
+        updateStatsOverlay();
+        for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2);
+    }
+}
+
+
+function handleBeeReproduction() {
     for (const hive of hives) {
         const costForTwoBees = HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2;
-        if (hive.nectar >= costForTwoBees && bees.length < MAX_BEES - 1) {
+        if (hive.nectar >= costForTwoBees && bees.length < simSettings.maxBees - 1) {
             hive.nectar -= costForTwoBees;
             const baseBeeDna = {};
             if (hive.contributorCount > 0) {
@@ -264,13 +302,16 @@ function animate() {
             for (const key in hive.dnaPool) { hive.dnaPool[key] = 0; }
         }
     }
-    for (const nest of nests) {
+}
+
+function handleBirdReproduction() {
+     for (const nest of nests) {
         if (nest.occupants.size >= 2 && nest.isAvailable === false && !nest.hasEgg && nest.nestingCountdown <= 0) {
             nest.nestingCountdown = NEST_SETTINGS.NESTING_TIME_SECONDS * 60;
         }
         if (nest.occupants.size >= 2 && nest.nestingCountdown > 0) {
             nest.nestingCountdown--;
-            if (nest.nestingCountdown <= 0) {
+            if (nest.nestingCountdown <= 0 && birds.length < simSettings.maxBirds) {
                 nest.hasEgg = true;
                 nest.hatchingCountdown = NEST_SETTINGS.HATCH_TIME_SECONDS * 60;
                 const matingPair = Array.from(nest.occupants);
@@ -295,23 +336,59 @@ function animate() {
             }
         }
     }
-    ctx.fillStyle = '#4a5742'; 
-    ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
-    if (isOverlayVisible) {
-        updateOverlay();
-        for (const hive of hives) drawHiveProgressBar(ctx, hive, HIVE_SETTINGS.NECTAR_FOR_NEW_BEE * 2);
-    }
-    requestAnimationFrame(animate);
 }
 
-function updateOverlay() {
+// Corrected function
+function updateStatsOverlay() {
     beePopulationElement.textContent = `Bee Population: ${bees.length}`;
     birdPopulationElement.textContent = `Bird Population: ${birds.length}`;
-    if (frame % 120 === 0) {
-        if (populationGraphDetails.open) { drawPopulationGraph(); }
-        if (beeViolinDetails.open) { drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee'); }
-        if (birdViolinDetails.open) { drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird'); }
+
+    // Plotly is efficient. We call react/newPlot which will only redraw if the
+    // underlying data has changed. This is safe to call every render frame.
+    // The data itself is only updated every 120 simulation frames.
+    if (populationGraphDetails.open) { drawPopulationGraph(); }
+    if (beeViolinDetails.open) { drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee'); }
+    if (birdViolinDetails.open) { drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird'); }
+}
+
+
+function updateGraphData() {
+    const currentTime = frame / 60; // Time in seconds, based on fixed 60Hz update
+    
+    populationHistory.time.push(currentTime);
+    populationHistory.bees.push(bees.length);
+    populationHistory.birds.push(birds.length);
+    if (populationHistory.time.length > 100) {
+        populationHistory.time.shift();
+        populationHistory.bees.shift();
+        populationHistory.birds.shift();
     }
+
+    traitHistory.time.push(currentTime);
+    Object.keys(BIRD_DNA_TEMPLATE).forEach(trait => {
+        const values = birds.filter(b => b.isAlive).map(b => b.dna[trait]);
+        if (values.length > 0) {
+            traitHistory.birds[trait].mean.push(values.reduce((a, b) => a + b, 0) / values.length);
+            traitHistory.birds[trait].min.push(Math.min(...values));
+            traitHistory.birds[trait].max.push(Math.max(...values));
+        } else {
+            traitHistory.birds[trait].mean.push(null);
+            traitHistory.birds[trait].min.push(null);
+            traitHistory.birds[trait].max.push(null);
+        }
+    });
+    Object.keys(BEE_DNA_TEMPLATE).forEach(trait => {
+        const values = bees.filter(b => b.isAlive).map(b => b.dna[trait]);
+        if (values.length > 0) {
+            traitHistory.bees[trait].mean.push(values.reduce((a, b) => a + b, 0) / values.length);
+            traitHistory.bees[trait].min.push(Math.min(...values));
+            traitHistory.bees[trait].max.push(Math.max(...values));
+        } else {
+            traitHistory.bees[trait].mean.push(null);
+            traitHistory.bees[trait].min.push(null);
+            traitHistory.bees[trait].max.push(null);
+        }
+    });
 }
 
 function drawPopulationGraph() {
@@ -372,7 +449,6 @@ function drawTraitEvolutionGraphs(elementId, history, template, titlePrefix) {
 }
 
 function getRelativeBranchPosition(plant, branchPoint) {
-    // Calculates the final x,y of a branch point relative to the tree's base (0,0)
     let x = 0, y = 0;
     let angle = -90 * (Math.PI / 180);
     let length = plant.length * plant.scale;
@@ -395,21 +471,32 @@ function getRelativeBranchPosition(plant, branchPoint) {
 }
 
 function getStaticBranchPosition(plant, branchPoint) {
-    // Calculates absolute world position, needed for initial placement checks
     const relativePos = getRelativeBranchPosition(plant, branchPoint);
     return { x: plant.x + relativePos.x, y: canvas.height + relativePos.y };
 }
 
 
 function initialize() {
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+    }
+
+    frame = 0;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
+    currentWindStrength = simSettings.windEnabled ? DEFAULT_WIND_STRENGTH : 0;
+    
+    lastFrameTime = performance.now();
+    accumulator = 0;
+    renderFpsInterval = 1000 / simSettings.fps;
+    renderThen = Date.now();
+
+
     const cellSize = 100;
     birdGrid = new Grid(canvas.width, canvas.height, cellSize);
     beeGrid = new Grid(canvas.width, canvas.height, cellSize);
     
-    // --- Clear all plotting history for a fresh start ---
     initializeTraitHistory();
     populationHistory = { time: [], bees: [], birds: [] };
 
@@ -532,7 +619,7 @@ function initialize() {
     if (nests.length > 0) {
         const initialBirdDna = {};
         for (const key in BIRD_DNA_TEMPLATE) initialBirdDna[key] = BIRD_DNA_TEMPLATE[key].initial;
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < simSettings.initialBirds; i++) {
             const nest = nests[i % nests.length];
             const parentPreset = PARENT_PRESETS[i % PARENT_PRESETS.length];
             const bodyVertices = BIRD_GENES.BODY_SHAPES[parentPreset.genes.baseBeak.body].vertices;
@@ -548,20 +635,80 @@ function initialize() {
     if (hives.length > 0) {
         const initialBeeDna = {};
         for (const key in BEE_DNA_TEMPLATE) initialBeeDna[key] = BEE_DNA_TEMPLATE[key].initial;
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < simSettings.initialBees; i++) {
             const hive = hives[i % hives.length];
             bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive, initialBeeDna));
         }
     }
+
+    gameLoop(performance.now());
 }
 
 
-window.addEventListener('resize', initialize);
+// --- Settings Management ---
+function saveSettings() {
+    simSettings = {
+        initialBees: parseInt(initialBeesInput.value, 10),
+        maxBees: parseInt(maxBeesInput.value, 10),
+        initialBirds: parseInt(initialBirdsInput.value, 10),
+        maxBirds: parseInt(maxBirdsInput.value, 10),
+        fps: parseInt(fpsSelect.value, 10),
+        windEnabled: windToggle.checked
+    };
+    localStorage.setItem('simSettings', JSON.stringify(simSettings));
+}
+
+function loadSettings() {
+    const saved = localStorage.getItem('simSettings');
+    if (saved) {
+        simSettings = JSON.parse(saved);
+    } else {
+        // Load defaults
+        simSettings = {
+            initialBees: INITIAL_BEES,
+            maxBees: MAX_BEES,
+            initialBirds: INITIAL_BIRDS,
+            maxBirds: MAX_BIRDS,
+            fps: 60,
+            windEnabled: true
+        };
+    }
+    // Update UI elements with loaded settings
+    initialBeesInput.value = simSettings.initialBees;
+    maxBeesInput.value = simSettings.maxBees;
+    initialBirdsInput.value = simSettings.initialBirds;
+    maxBirdsInput.value = simSettings.maxBirds;
+    fpsSelect.value = simSettings.fps;
+    windToggle.checked = simSettings.windEnabled;
+}
+
+function resetSettings() {
+    localStorage.removeItem('simSettings');
+    loadSettings(); // Reload defaults into UI
+}
+
+applySettingsBtn.addEventListener('click', () => {
+    saveSettings();
+    initialize();
+});
+
+resetSettingsBtn.addEventListener('click', () => {
+    resetSettings();
+    saveSettings();
+    initialize();
+});
+
+
+window.addEventListener('resize', () => {
+    saveSettings();
+    initialize();
+});
+
 window.addEventListener('keydown', (event) => {
     if (event.key === 'M' || event.key === 'm') {
-        isOverlayVisible = !isOverlayVisible;
-        overlay.classList.toggle('overlay-hidden', !isOverlayVisible);
-        if (!isOverlayVisible) {
+        isStatsOverlayVisible = !isStatsOverlayVisible;
+        statsOverlay.classList.toggle('overlay-hidden', !isStatsOverlayVisible);
+        if (!isStatsOverlayVisible) {
             Plotly.purge('population-graph');
             Plotly.purge('bee-violin-plot');
             Plotly.purge('bird-violin-plot');
@@ -571,11 +718,16 @@ window.addEventListener('keydown', (event) => {
             if (birdViolinDetails.open) drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird');
         }
     }
+    if (event.key === 'P' || event.key === 'p') {
+        isPerfOverlayVisible = !isPerfOverlayVisible;
+        performanceOverlay.classList.toggle('overlay-hidden', !isPerfOverlayVisible);
+    }
 });
 
 populationGraphDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawPopulationGraph(); } });
 beeViolinDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawTraitEvolutionGraphs('bee-violin-plot', traitHistory.bees, BEE_DNA_TEMPLATE, 'Bee'); } });
 birdViolinDetails.addEventListener('toggle', (event) => { if (event.target.open) { drawTraitEvolutionGraphs('bird-violin-plot', traitHistory.birds, BIRD_DNA_TEMPLATE, 'Bird'); } });
 
+// --- Initial Load ---
+loadSettings();
 initialize();
-animate();

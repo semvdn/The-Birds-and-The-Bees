@@ -28,6 +28,42 @@
             <div id="bird-violin-plot"></div>
         </details>
     </div>
+
+    <div id="performance-overlay" class="overlay-hidden">
+        <h3>Performance & Simulation Settings</h3>
+        <div class="setting-row">
+            <label for="initial-bees">Initial Bees:</label>
+            <input type="number" id="initial-bees" min="1">
+        </div>
+        <div class="setting-row">
+            <label for="max-bees">Max Bees:</label>
+            <input type="number" id="max-bees" min="1">
+        </div>
+        <div class="setting-row">
+            <label for="initial-birds">Initial Birds:</label>
+            <input type="number" id="initial-birds" min="1">
+        </div>
+        <div class="setting-row">
+            <label for="max-birds">Max Birds:</label>
+            <input type="number" id="max-birds" min="1">
+        </div>
+        <div class="setting-row">
+            <label for="fps-select">Target FPS:</label>
+            <select id="fps-select">
+                <option value="60">60 FPS</option>
+                <option value="30">30 FPS</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <label for="wind-toggle">Enable Wind:</label>
+            <input type="checkbox" id="wind-toggle">
+        </div>
+        <div class="button-row">
+            <button id="apply-settings">Apply & Restart</button>
+            <button id="reset-settings">Reset to Default</button>
+        </div>
+    </div>
+
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

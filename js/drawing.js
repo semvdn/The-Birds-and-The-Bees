@@ -1,4 +1,4 @@
-import { SHRUB_WIND_MULTIPLIER, WEED_WIND_MULTIPLIER, GLOBAL_WIND_STRENGTH } from './presets.js';
+import { SHRUB_WIND_MULTIPLIER, WEED_WIND_MULTIPLIER } from './presets.js';
 
 function drawStaticLeaf(oCtx, plant) {
     oCtx.fillStyle = plant.leafColor + 'aa';
@@ -82,13 +82,13 @@ export function preRenderPlant(plant, canvas) {
     plant.renderHeight = renderSize;
 }
 
-export function drawPlant(plant, ctx, canvas, frame) {
+export function drawPlant(plant, ctx, canvas, frame, windStrength) {
     ctx.save();
     let windMultiplier = 1.0;
     if (plant.plantType === 'shrub') windMultiplier = SHRUB_WIND_MULTIPLIER;
     if (plant.plantType === 'weed') windMultiplier = WEED_WIND_MULTIPLIER;
-    const windStrength = GLOBAL_WIND_STRENGTH * windMultiplier;
-    const trunkSway = Math.sin((frame / 220) + plant.x / 50) * 0.015 * windStrength;
+    const finalWindStrength = windStrength * windMultiplier;
+    const trunkSway = Math.sin((frame / 220) + plant.x / 50) * 0.015 * finalWindStrength;
     
     ctx.translate(plant.x, canvas.height);
     ctx.rotate(trunkSway);
