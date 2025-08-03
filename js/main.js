@@ -591,6 +591,7 @@ function initialize() {
                 if (i < numHives) {
                     const newHive = { ...homeInfo, nectar: 0, dnaPool: {}, contributorCount: 0, knownFlowerLocations: [], beesEnRoute: 0 };
                     for (const key in BEE_DNA_TEMPLATE) newHive.dnaPool[key] = 0;
+                    newHive.worldScale = G_WORLD_SCALE; // Attach world scale
                     hives.push(newHive);
                     preRenderHive(newHive);
                 } else {
@@ -603,6 +604,7 @@ function initialize() {
                         twig.cpX = (twig.x1 + twig.x2) / 2 + (Math.random() - 0.5) * 10; twig.cpY = (twig.y1 + twig.y2) / 2 + (Math.random() - 0.5) * 5;
                         newNest.twigs.push(twig);
                     }
+                    newNest.worldScale = G_WORLD_SCALE; // Attach world scale
                     nests.push(newNest);
                     preRenderNest(newNest);
                 }
@@ -681,8 +683,8 @@ function initialize() {
     }
 
     applyLiveSettings();
-    activeSimSettings = { ...simSettings }; // Sync active state after initialization
-    checkSettingsState(); // Disable buttons
+    activeSimSettings = { ...simSettings }; 
+    checkSettingsState(); 
     gameLoop(performance.now());
 }
 
@@ -730,13 +732,13 @@ function loadSettings() {
     beeSpeedValue.textContent = simSettings.beeSpeedMultiplier.toFixed(1) + 'x';
     windSliderContainer.classList.toggle('hidden', !simSettings.windEnabled);
 
-    activeSimSettings = { ...simSettings }; // Set the initial active state
+    activeSimSettings = { ...simSettings }; 
 }
 
 function resetSettings() {
     localStorage.removeItem('simSettings');
     loadSettings();
-    checkSettingsState(); // Check button states after loading defaults
+    checkSettingsState(); 
 }
 
 function applyLiveSettings() {
@@ -751,11 +753,10 @@ function applyLiveSettings() {
     for(const bee of bees) {
         bee.settings.maxSpeed = bee.baseMaxSpeed * beeSpeedMultiplier * bee.worldScale;
     }
-    activeSimSettings = { ...simSettings }; // Update active state
-    checkSettingsState(); // Re-check button states
+    activeSimSettings = { ...simSettings }; 
+    checkSettingsState();
 }
 
-// Compares UI values to active settings and toggles button disabled state
 function checkSettingsState() {
     let restartDirty = false;
     if (parseInt(initialBeesInput.value, 10) !== activeSimSettings.initialBees) restartDirty = true;
@@ -780,7 +781,6 @@ applySettingsBtn.addEventListener('click', () => {
 
 resetSettingsBtn.addEventListener('click', () => {
     resetSettings();
-    // No restart, just reset UI. Let user click apply.
 });
 
 applyLiveSettingsBtn.addEventListener('click', applyLiveSettings);
@@ -796,7 +796,6 @@ windToggle.addEventListener('change', () => {
     checkSettingsState();
 });
 
-// Add listeners to all controls to check state on change
 const allControls = [
     initialBeesInput, maxBeesInput, initialBirdsInput, maxBirdsInput,
     fpsSelect, windToggle, windSpeedSlider, birdSpeedSlider, beeSpeedSlider
@@ -804,7 +803,6 @@ const allControls = [
 allControls.forEach(control => control.addEventListener('input', checkSettingsState));
 
 
-// Real-time value displays for sliders
 windSpeedSlider.addEventListener('input', () => {
     windSpeedValue.textContent = parseFloat(windSpeedSlider.value).toFixed(1);
 });
@@ -838,11 +836,8 @@ function toggleOverlay(overlayElement) {
     }
 }
 
-// Function to detect touch support
-const isTouchDevice = () => ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
 function setupUI() {
-    if (isTouchDevice()) {
+    if (('ontouchstart' in window) || (navigator.maxTouchPoints > 0)) {
         document.body.classList.add('touch-device');
     } else {
         document.body.classList.add('no-touch-device');
