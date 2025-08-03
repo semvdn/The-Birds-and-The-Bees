@@ -3,8 +3,8 @@ import { BEE_POPULATION_THRESHOLD, HIVE_DANGER_RADIUS, HIVE_DANGER_WEIGHT } from
 import { preRenderBee } from '../boids/drawing.js';
 
 export class Bee extends Boid {
-    constructor(x, y, settings, hive, dna, scale) {
-        super(x, y, { ...settings, ...dna });
+    constructor(x, y, settings, hive, dna, scale, worldScale) {
+        super(x, y, { ...settings, ...dna }, worldScale);
         this.hive = hive; // The bee's birth hive
         this.dna = dna;
         this.state = 'SEEKING_FLOWER'; // SEEKING_FLOWER, GATHERING_NECTAR, RETURN_TO_HIVE
@@ -138,14 +138,17 @@ export class Bee extends Boid {
             const desired = { x: this.targetPetal.x - this.position.x, y: this.targetPetal.y - this.position.y };
             const distSq = desired.x * desired.x + desired.y * desired.y;
 
-            if (distSq < 4) { // dist < 2
+            const arrivalRadius = (this.preRenderedCanvas.width || 5) * 1.5;
+            const arrivalRadiusSq = arrivalRadius * arrivalRadius;
+
+            if (distSq < arrivalRadiusSq) { 
                 this.state = 'GATHERING_NECTAR';
                 this.gatheringCountdown = this.settings.gatherTime;
                 this.velocity = { x: 0, y: 0 };
             } else {
                 const dist = Math.sqrt(distSq);
                 let magnitude = this.settings.maxSpeed;
-                if (dist < 50) { magnitude = (dist / 50) * this.settings.maxSpeed; }
+                if (dist < 50 * this.worldScale) { magnitude = (dist / (50 * this.worldScale)) * this.settings.maxSpeed; }
                 desired.x = (desired.x / dist) * magnitude;
                 desired.y = (desired.y / dist) * magnitude;
                 const steer = { x: desired.x - this.velocity.x, y: desired.y - this.velocity.y };
@@ -207,7 +210,9 @@ export class Bee extends Boid {
             } else {
                 // If population is healthy, use a score-based system
                 let maxScore = -Infinity;
-                const dangerRadiusSq = HIVE_DANGER_RADIUS * HIVE_DANGER_RADIUS;
+                // --- SOLUTION: Scale the hardcoded danger radius by the world scale ---
+                const dangerRadius = HIVE_DANGER_RADIUS * this.worldScale;
+                const dangerRadiusSq = dangerRadius * dangerRadius;
 
                 for (const hive of world.hives) {
                     const dx = this.position.x - hive.position.x;

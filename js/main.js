@@ -54,7 +54,8 @@ let isPerfOverlayVisible = false;
 // --- Simulation Settings ---
 let simSettings = {};
 let currentWindStrength = DEFAULT_WIND_STRENGTH;
-let G_BOID_SCALE = 5.0; // Global scale for birds/bees, calculated on init
+let G_BOID_SCALE = 5.0; // Global visual scale for birds/bees, calculated on init
+let G_WORLD_SCALE = 1.0; // Global behavior scale for boids, calculated on init
 
 // --- Frame Rate Control ---
 let animationFrameId;
@@ -289,13 +290,13 @@ function handleBeeReproduction() {
                 const template = BEE_DNA_TEMPLATE[key];
                 bee1Dna[key] = mutate(baseBeeDna[key], template.min, template.max);
             }
-            bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee1Dna, G_BOID_SCALE));
+            bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee1Dna, G_BOID_SCALE, G_WORLD_SCALE));
             const bee2Dna = {};
             for (const key in baseBeeDna) {
                 const template = BEE_DNA_TEMPLATE[key];
                 bee2Dna[key] = mutate(baseBeeDna[key], template.min, template.max);
             }
-            bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee2Dna, G_BOID_SCALE));
+            bees.push(new Bee(hive.position.x + (Math.random()-0.5)*5, hive.position.y + (Math.random()-0.5)*5, BEE_SETTINGS, hive, bee2Dna, G_BOID_SCALE, G_WORLD_SCALE));
             hive.contributorCount = 0;
             for (const key in hive.dnaPool) { hive.dnaPool[key] = 0; }
         }
@@ -325,7 +326,7 @@ function handleBirdReproduction() {
                 const { inheritedGenes, inheritedDna } = determineInheritance(
                     nest.parentGenes[0], nest.parentDna[0], nest.parentGenes[1], nest.parentDna[1]
                 );
-                const newBird = new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, inheritedGenes, inheritedDna, G_BOID_SCALE);
+                const newBird = new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, inheritedGenes, inheritedDna, G_BOID_SCALE, G_WORLD_SCALE);
                 birds.push(newBird);
                 nest.hasEgg = false; 
                 nest.isAvailable = true;
@@ -489,7 +490,9 @@ function initialize() {
     canvas.height = window.innerHeight;
 
     // --- Dynamic Scaling Logic for World and Boids ---
-    G_BOID_SCALE = Math.max(3, 6 * (canvas.height / 1080));
+    const baseHeight = 1080; // The resolution our presets are balanced for
+    G_WORLD_SCALE = canvas.height / baseHeight;
+    G_BOID_SCALE = Math.max(3, 6 * G_WORLD_SCALE); // Visual scale is based on world scale
 
     const aspectRatio = canvas.width / canvas.height;
     const PORTRAIT_ASPECT_RATIO = 0.7;
@@ -655,7 +658,7 @@ function initialize() {
                 tailVertices: parentPreset.genes.baseTail.vertices(bodyVertices),
                 baseGenes: parentPreset.genes
             };
-            birds.push(new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, birdGenes, initialBirdDna, G_BOID_SCALE));
+            birds.push(new Bird(nest.position.x, nest.position.y, BIRD_SETTINGS, nest, birdGenes, initialBirdDna, G_BOID_SCALE, G_WORLD_SCALE));
         }
     }
     if (hives.length > 0) {
@@ -663,7 +666,7 @@ function initialize() {
         for (const key in BEE_DNA_TEMPLATE) initialBeeDna[key] = BEE_DNA_TEMPLATE[key].initial;
         for (let i = 0; i < simSettings.initialBees; i++) {
             const hive = hives[i % hives.length];
-            bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive, initialBeeDna, G_BOID_SCALE));
+            bees.push(new Bee(hive.position.x, hive.position.y, BEE_SETTINGS, hive, initialBeeDna, G_BOID_SCALE, G_WORLD_SCALE));
         }
     }
 

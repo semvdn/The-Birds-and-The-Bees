@@ -1,15 +1,22 @@
 import { GRAVITY, DEATH_FADE_TIME, LIFETIME_VARIATION_PERCENT } from '../presets.js';
 
 export class Boid {
-    constructor(x, y, settings) {
+    constructor(x, y, settings, worldScale = 1.0) {
         this.position = { x, y };
         this.velocity = { x: Math.random() * 2 - 1, y: Math.random() * 2 - 1 };
+        this.worldScale = worldScale;
         
         // Make a mutable copy of settings to avoid modifying the global preset object
         this.settings = { ...settings };
 
+        // --- SOLUTION: Scale behavioral and physical parameters by the world scale ---
+        if (this.settings.visualRange) this.settings.visualRange *= worldScale;
+        if (this.settings.separationDistance) this.settings.separationDistance *= worldScale;
+        if (this.settings.killRange) this.settings.killRange *= worldScale;
+        if (this.settings.maxSpeed) this.settings.maxSpeed *= worldScale;
+        // ---
+
         // --- Apply Lifetime Variation ---
-        // Use the passed maxLifetime as a base and apply a random variation
         const baseLifetime = this.settings.maxLifetime;
         const variation = (Math.random() - 0.5) * 2 * LIFETIME_VARIATION_PERCENT; // e.g., a value between -0.2 and +0.2
         this.settings.maxLifetime = baseLifetime * (1 + variation);
@@ -174,7 +181,9 @@ export class Boid {
 
     avoidEdges(world) {
         const { canvas, groundHeight } = world;
-        const margin = 50; // Top margin
+        // --- SOLUTION: Scale the hardcoded edge margins by the world scale ---
+        const margin = 50 * this.worldScale; 
+        const groundMargin = 70 * this.worldScale;
 
         if (this.position.x > canvas.width) this.position.x = 0;
         else if (this.position.x < 0) this.position.x = canvas.width;
@@ -182,7 +191,6 @@ export class Boid {
         if (this.position.y < margin) this.velocity.y += this.settings.turnFactor;
         
         const groundLevel = canvas.height - groundHeight;
-        const groundMargin = 70;
         if (this.position.y > groundLevel - groundMargin) {
             const distanceToRepelZone = this.position.y - (groundLevel - groundMargin);
             const repulsionStrength = (distanceToRepelZone / groundMargin) * this.settings.turnFactor * 2.5;

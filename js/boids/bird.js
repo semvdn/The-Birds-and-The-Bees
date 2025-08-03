@@ -3,8 +3,8 @@ import { NEST_SETTINGS, MAX_BIRDS } from '../presets.js';
 import { preRenderBird } from './drawing.js';
 
 export class Bird extends Boid {
-    constructor(x, y, settings, nest, genes, dna, scale) {
-        super(x, y, { ...settings, ...dna });
+    constructor(x, y, settings, nest, genes, dna, scale, worldScale) {
+        super(x, y, { ...settings, ...dna }, worldScale);
         this.homeNest = nest;
         this.matingNest = null;
         this.beesCaught = 0;
