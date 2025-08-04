@@ -838,7 +838,10 @@ function toggleOverlay(overlayElement) {
 }
 
 function setupUI() {
-    if (('ontouchstart' in window) || (navigator.maxTouchPoints > 0)) {
+    // Use a more reliable method for touch detection
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+
+    if (isTouch) {
         document.body.classList.add('touch-device');
     } else {
         document.body.classList.add('no-touch-device');
@@ -875,7 +878,7 @@ function setupUI() {
         });
     });
 
-    generateFavicon(); // Generate the icon on initial UI setup
+    generateFavicon();
 }
 
 

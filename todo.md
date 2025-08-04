@@ -1,0 +1,3 @@
+- update documentation
+- optimized overlays and menus for mobile
+- fix issue with low resolution in landscape mode on mobile
