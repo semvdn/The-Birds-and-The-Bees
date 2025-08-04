@@ -15,6 +15,7 @@ Both birds and bees possess a "DNA" object that dictates their behavior. The tem
     -   `evadeFactor` (Bees): How strongly a bee steers away from predators.
     -   `returnFactor` (Bees): How strongly a bee steers towards its hive.
 -   **Genetic Range:** Each trait is defined with a `min` and `max` value, constraining its evolution within a plausible range.
+-   **World Scaling:** It is important to note that the values for distance-based traits (`visualRange`, `separationDistance`) defined in the presets are *base values*. During the simulation, these are multiplied by a global `worldScale` factor to ensure that behavior is proportional to the screen size.
 
 ## Inheritance and Reproduction
 

@@ -2,7 +2,7 @@
 
 The diverse and organic flora in the simulation is generated procedurally using a combination of Lindenmayer Systems (L-Systems) and a pre-rendering technique for performance.
 
-## Core Technology: L-Systems
+## L-Systems
 
 An L-System is a string rewriting system used to model the growth processes of plants. It works by starting with a simple string (an "axiom") and iteratively applying a set of rules to expand the string into a complex sequence of commands.
 
@@ -31,7 +31,7 @@ The final, complex string is interpreted as a series of drawing commands, much l
 
 The simulation contains three main types of plants, each with multiple "species" defined in [`js/presets.js`](js/presets.js).
 
--   **Trees (`TREE_PRESETS`):** The largest plants. They are the only type that can support nests and hives.
+-   **Trees (`TREE_PRESETS`):** The largest plants. They are the only type that can support nests and hives. Their size is scaled relative to the screen height.
 -   **Shrubs (`SHRUB_PRESETS`):** Medium-sized plants. These can be purely decorative (`leafy`) or can produce flowers (`flower`) that serve as nectar sources.
 -   **Weeds (`WEED_PRESETS`):** Small, simple plants that add to the ground clutter and visual density of the forest floor.
 
@@ -41,7 +41,7 @@ Each preset contains unique L-System rules, iteration counts, angles, colors, an
 
 Recalculating and drawing the complex L-System for every plant on every frame would be extremely slow. To solve this, the simulation uses a pre-rendering technique:
 
-1.  During the initial setup, the `preRenderPlant` function in [`js/drawing.js`](js/drawing.js) draws each plant's full structure *once* onto a hidden, off-screen canvas.
+1.  During the initial setup, the `preRenderPlant` function in [`js/drawing.js`](js/drawing.js) draws each plant's full structure *once* onto a hidden, off-screen canvas. This includes nests and hives, whose sizes are scaled based on a global `worldScale` factor to ensure they are proportional to the environment.
 2.  This canvas image is then cached within the plant's object.
 3.  In the main `animate` loop, the simulation simply draws this cached image to the screen. This is vastly more performant.
 

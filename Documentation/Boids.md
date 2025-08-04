@@ -6,7 +6,7 @@ The birds and bees in the simulation are autonomous agents, often called "boids,
 
 Both `Bird` and `Bee` classes inherit from a base `Boid` class, which contains shared logic.
 
-### Core Flocking Rules
+### Core Flocking Rules & Dynamic Scaling
 
 At the heart of the boid simulation are three rules that dictate movement based on nearby flockmates (the "local neighborhood"). These are applied in the `applyBoidRules` function.
 
@@ -14,7 +14,7 @@ At the heart of the boid simulation are three rules that dictate movement based 
 2.  **Alignment:** Steer towards the average direction of local flockmates.
 3.  **Cohesion:** Steer towards the average position (center of mass) of local flockmates.
 
-The strength of these steering forces is controlled by heritable DNA traits, allowing the boids' flocking behavior to evolve.
+To ensure consistent behavior across different screen sizes, key behavioral parameters are scaled. When a boid is created, its `visualRange`, `separationDistance`, `maxSpeed`, and `killRange` are all multiplied by a global `worldScale` factor. This means a boid on a smaller screen will have proportionally smaller perception and movement ranges, making its behavior feel consistent regardless of resolution. The strength of these steering forces remains controlled by heritable DNA traits, allowing the boids' flocking behavior to evolve.
 
 ### Life Cycle
 
@@ -34,16 +34,16 @@ Bees are the prey and pollinators of the ecosystem. Their behavior is governed b
 
 -   **Hive Selection Intelligence:** The `returnToHive` logic is dynamic:
     -   **Low Population:** If the total bee population is below the `BEE_POPULATION_THRESHOLD`, bees return to the *closest* hive. This ensures reproductive efficiency when the colony is small.
-    -   **High Population:** When the population is healthy, bees use a "Hive Score" to choose their destination. This score prioritizes hives that are **closer**, have **fewer bees currently en route**, and are **less threatened by nearby birds**. This behavior encourages bees to spread out, balancing risk and efficiency.
+    -   **High Population:** When the population is healthy, bees use a "Hive Score" to choose their destination. This score prioritizes hives that are **closer**, have **fewer bees currently en route**, and are **less threatened by nearby birds**. The check for nearby birds uses a `HIVE_DANGER_RADIUS` that is also scaled with the world, ensuring threat assessment is proportional to the screen size.
 
--   **Reproduction ([`js/main.js`](js/main.js)):** When a hive accumulates enough nectar, it creates two new bees. The offspring's DNA is based on the averaged DNA of all bees that contributed nectar, plus a chance of mutation.
+-   **Reproduction ([`js/main.js`](js/main.js)):** When a hive has accumulated enough nectar, it creates two new bees. The offspring's DNA is based on the averaged DNA of all bees that contributed nectar, plus a chance of mutation.
 
 ## Bird Behavior ([`js/boids/bird.js`](js/boids/bird.js))
 
 Birds are the predators of the ecosystem. Their behavior is also state-driven.
 
 -   **States:**
-    1.  `HUNTING`: A bird always follows the core flocking rules. In the `HUNTING` state, it adds a strong steering behavior to actively seek out and chase the nearest bee within its visual range.
+    1.  `HUNTING`: A bird always follows the core flocking rules. In the `HUNTING` state, it adds a strong steering behavior to actively seek out and chase the nearest bee within its scaled visual range.
     2.  `SEEKING_MATE`: After catching enough bees (`NEST_SETTINGS.BEES_FOR_NEW_BIRD`), the bird attempts to reproduce.
     3.  `GO_TO_NEST`: Once paired with a mate and having claimed a nest, the bird travels to the nest to begin the nesting process.
 

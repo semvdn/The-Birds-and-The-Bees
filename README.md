@@ -18,8 +18,9 @@ For more detailed information on specific mechanics, see the other documentation
     -   Birds must hunt a specific number of bees to gain enough energy to reproduce. Successful birds find a mate and a free nest to lay an egg, which eventually hatches into a new bird.
 -   **Evolutionary Mechanics:** Birds and bees have a set of heritable traits (DNA) that control their behavior (e.g., `visualRange`, `huntFactor`, `evadeFactor`). These traits are blended during reproduction (sexual for birds, collective for bees) and are subject to random mutation, allowing the populations to evolve over time.
 -   **Genetic Appearance:** Bird appearance (body shape, beak shape, tail shape, and color palette) is genetically determined. Offspring inherit a blend of their parents' features through vertex and color interpolation, which are also subject to micro and macro mutations.
--   **Interactive Overlay:** An in-simulation overlay provides real-time statistics on population counts and detailed graphs visualizing the distribution and evolution of every heritable trait for both species.
--   **Dynamic World:** The simulation features wind that sways plants, a balanced world-generation system to ensure a viable starting ecosystem, and an auto-restart feature if a species goes extinct.
+-   **Interactive Overlays & Settings:** In-simulation overlays provide real-time statistics on population counts and detailed graphs visualizing the evolution of every heritable trait. A settings panel allows for live adjustment of parameters like wind speed and boid speed, as well as simulation-wide settings that require a restart.
+-   **Dynamic World & Scaling:** The simulation features wind that sways plants and a world generation system that adapts to different screen sizes. All boid behaviors, speeds, and visual sizes are scaled proportionally, ensuring a consistent experience on any device.
+
 
 ## How to Run
 
@@ -33,20 +34,20 @@ There is nothing to install. Simply open the link in a modern web browser (like 
 The simulation can be interacted with using the following controls:
 
 -   **Press `M`:** Toggles the main statistics overlay, which shows population counts and trait distributions.
--   **Press `P`:** Toggles the performance settings overlay, which gives users acces to settigns to improve performance and adjust simulation parameters.
+-   **Press `P`:** Toggles the performance and settings overlay. Here you can adjust parameters that require a restart (like population caps) or settings that can be applied live (like boid speed and wind).
 -   **On mobile:** A hamburger menu provides access to the statistics and performance overlays.
 
 ## File Structure
 
 -   [`index.html`](index.html): The main HTML file that sets up the canvas and loads all the necessary scripts.
 -   [`style.css`](style.css): Contains basic styling for the main page and canvas.
--   [`css/overlay.css`](css/overlay.css): All styling for the interactive statistics overlay.
--   [`js/main.js`](js/main.js): The core simulation controller. It manages the main animation loop, world generation, boid interactions, and reproduction cycles.
+-   [`css/overlay.css`](css/overlay.css): All styling for the interactive overlays.
+-   [`js/main.js`](js/main.js): The core simulation controller. It manages the main animation loop, world generation, UI state, boid interactions, and reproduction cycles.
 -   [`js/presets.js`](js/presets.js): A centralized configuration file for all simulation parameters, including boid behaviors, L-System rules, colors, and evolutionary settings.
 -   [`js/lsystem.js`](js/lsystem.js): Implements the L-System generator, which procedurally creates the rule-based structures for plants.
 -   [`js/drawing.js`](js/drawing.js): Contains the functions responsible for rendering the procedurally generated plants on the canvas.
--   [`js/favicon.js`](js/favicon.js): Generates a dynamic, procedurally drawn favicon that reflects the current state of the simulation.
--   [`js/boids/boid.js`](js/boids/boid.js): The base `Boid` class, which includes shared logic for all moving agents, such as flocking behaviors (separation, alignment, cohesion), movement, and basic life-cycle management.
+-   [`js/favicon.js`](js/favicon.js): Generates a favicon based on one of the bird designs.
+-   [`js/boids/boid.js`](js/boids/boid.js): The base `Boid` class, which includes shared logic for all moving agents, such as flocking behaviors, movement, world scaling, and life-cycle management.
 -   [`js/boids/bird.js`](js/boids/bird.js): The `Bird` class, which extends `Boid`. It defines predator-specific logic, including hunting bees, seeking a mate, and nesting.
 -   [`js/boids/bee.js`](js/boids/bee.js): The `Bee` class, which extends `Boid`. It defines prey-specific logic, including evading predators, collecting nectar from flowers, and returning it to a hive.
 -   [`js/boids/drawing.js`](js/boids/drawing.js): Contains the functions for drawing all boids (birds and bees) as well as their nests and hives.
