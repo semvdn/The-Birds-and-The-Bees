@@ -1,10 +1,10 @@
 # Bird Appearance Mechanics
 
-The visual appearance of each bird in the simulation is not random; it is determined by a set of "genes" that are inherited, blended, and mutated across generations. This genetic system is defined in [`js/presets.js`](js/presets.js:99) and implemented in [`js/main.js`](js/main.js:99).
+The visual appearance of each bird in the simulation is not random; it is determined by a set of "genes" that are inherited, blended, and mutated across generations. This genetic system is defined in [`js/presets.js`](js/presets.js:100) and implemented in [`js/main.js`](js/main.js:143).
 
 ## Genetic Components (`BIRD_GENES`)
 
-A bird's appearance is defined by a combination of shapes and colors stored in [`BIRD_GENES`](js/presets.js:99).
+A bird's appearance is defined by a combination of shapes and colors stored in [`BIRD_GENES`](js/presets.js:100).
 
 1.  **Body Shapes:** These are predefined sets of vertices that form the main body of the bird. The simulation includes a `STANDARD` and `CRACKER` body type.
 
@@ -32,11 +32,18 @@ While inheritance and blending create new combinations of traits, mutation intro
 
 ## Drawing the Bird Model
 
-The final appearance is rendered in the [`drawBirdModel`](js/boids/drawing.js:3) function ([`js/boids/drawing.js`](js/boids/drawing.js:3)):
+The final appearance is rendered through a multi-step process in [`js/boids/drawing.js`](js/boids/drawing.js:1):
 
-1.  The bird's geometry is defined as a series of closed polygons (e.g., `head_crest`, `wing_bottom`).
-2.  Each polygon is drawn using the vertices from the bird's genetic shape data.
-3.  The polygon is filled with the corresponding color from the bird's genetic color palette.
-4.  The entire composite shape is then scaled and rotated, making the bird face its direction of travel.
+1.  **[`drawBirdModel`](js/boids/drawing.js:3):** This core function defines the bird's geometry.
+    *   It constructs a series of closed polygons (e.g., `head_crest`, `wing_bottom`) using the vertex data from the bird's genes.
+    *   Each polygon is filled with the corresponding color from the bird's genetic palette.
 
-This system allows for a rich and visually diverse population of birds, where every individual can be subtly or dramatically unique.
+2.  **[`preRenderBird`](js/boids/drawing.js:34):** For efficiency, each bird's appearance is pre-rendered to an offscreen canvas once.
+    *   This function calls `drawBirdModel` to draw the static bird shape onto a temporary canvas.
+    *   This pre-rendered image is stored on the boid object.
+
+3.  **[`drawBird`](js/boids/drawing.js:54):** In each animation frame, this function draws the final bird onto the main canvas.
+    *   It takes the pre-rendered canvas image.
+    *   The image is translated to the bird's current position, rotated to face its direction of travel, and scaled appropriately. If the bird is not alive, it is drawn rotated on its side and fades out.
+
+This system allows for a rich and visually diverse population of birds, where every individual can be subtly or dramatically unique, while maintaining high performance by avoiding redrawing the complex model every frame.

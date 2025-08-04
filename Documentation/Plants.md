@@ -22,10 +22,10 @@ The final, complex string is interpreted as a series of drawing commands, much l
 -   `F`: Move forward while drawing a branch segment.
 -   `+`: Turn right by a pre-defined angle.
 -   `-`: Turn left by a pre-defined angle.
--   `[`: Push the current state (the full canvas transformation matrix and current line width) onto a stack. This marks a branching point.
--   `]`: Pop a state from the stack, effectively returning to a previous branching point to draw another branch.
--   `L`: Draw a leaf.
--   `O`: Draw a flower. This point is also registered as a nectar source for bees.
+-   `[`: Pushes the current canvas transform and line width onto a stack. This is used to create branches. In [`js/lsystem.js`](js/lsystem.js), the `findBranchPoints` function specifically identifies the first few `[` characters on the main trunk of trees as potential locations for nests or hives.
+-   `]`: Pops a state from the stack, restoring the previous position, angle, and line width. This allows the drawing to return to a branch point and continue.
+-   `L`: Draws a leaf, using a pre-defined shape and color from the plant's preset.
+-   `O`: Draws a flower. The position of each flower is stored in the plant's `petalPoints` array, registering it as a nectar source for bees.
 
 ## Plant Variety
 
@@ -47,4 +47,4 @@ Recalculating and drawing the complex L-System for every plant on every frame wo
 
 ## Dynamic Elements
 
-Although the plants are pre-rendered, they are not entirely static. A global wind strength variable and type-specific multipliers in [`js/presets.js`](js/presets.js) (`GLOBAL_WIND_STRENGTH`, `SHRUB_WIND_MULTIPLIER`, `WEED_WIND_MULTIPLIER`) are used in the `drawPlant` function to apply a gentle, scaled swaying `rotate` transformation to each plant's cached image, bringing the forest to life.
+Although the plant structures are pre-rendered, they are not entirely static. The main animation loop passes a global `windStrength` value to the `drawPlant` function in [`js/drawing.js`](js/drawing.js). Inside this function, the wind's effect is scaled by type-specific multipliers (`SHRUB_WIND_MULTIPLIER`, `WEED_WIND_MULTIPLIER` from [`js/presets.js`](js/presets.js)) to apply a gentle, swaying `rotate` transformation to each plant's cached image, bringing the forest to life.

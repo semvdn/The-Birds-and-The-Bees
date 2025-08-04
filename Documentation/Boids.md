@@ -43,15 +43,15 @@ Bees are the prey and pollinators of the ecosystem. Their behavior is governed b
 Birds are the predators of the ecosystem. Their behavior is also state-driven.
 
 -   **States:**
-    1.  `HUNTING`: The bird actively seeks out and chases the nearest bee within its visual range. If no prey is in sight, it will still apply flocking rules, effectively following its flockmates to search for food.
-    2.  `SEEKING_MATE`: After catching enough bees (`BEES_FOR_NEW_BIRD`), the bird attempts to reproduce.
-    3.  `GO_TO_NEST`: Once paired with a mate and having claimed a nest, the bird travels to the nest to lay an egg.
+    1.  `HUNTING`: A bird always follows the core flocking rules. In the `HUNTING` state, it adds a strong steering behavior to actively seek out and chase the nearest bee within its visual range.
+    2.  `SEEKING_MATE`: After catching enough bees (`NEST_SETTINGS.BEES_FOR_NEW_BIRD`), the bird attempts to reproduce.
+    3.  `GO_TO_NEST`: Once paired with a mate and having claimed a nest, the bird travels to the nest to begin the nesting process.
 
--   **Reproduction and Nesting:** The bird reproduction cycle is a multi-step process:
+-   **Reproduction and Nesting ([`js/main.js`](js/main.js)):** The bird reproduction cycle is a multi-step process managed in the main simulation loop:
     1.  A bird first checks if the world population is below the `MAX_BIRDS` limit. If not, it returns to hunting, incurring a "cost" by resetting its `beesCaught` counter.
     2.  If there is space, it searches for a potential partner that is also in the `SEEKING_MATE` state.
-    3.  Once a partner is found, the pair searches for an available nest.
-    4.  When a pair finds and claims a nest, they set `isAvailable` to `false`.
-    5.  Both birds fly to the nest. When both have arrived, they begin a nesting countdown.
-    6.  An egg is laid, which starts a hatching countdown.
-    7.  When the egg hatches, a new bird is born, and the nest becomes available again (`isAvailable = true`).
+    3.  Once a partner is found, the pair searches for and claims an available nest, setting its `isAvailable` flag to `false`.
+    4.  Both birds, now in the `GO_TO_NEST` state, fly to their claimed `matingNest`. Upon arrival, each bird adds itself to the nest's `occupants` set.
+    5.  The main loop checks for nests where `occupants.size` is 2 or more. When this condition is met, a `nestingCountdown` begins.
+    6.  After the nesting countdown finishes, an egg is laid (`hasEgg = true`), and a separate `hatchingCountdown` begins. The parent birds are reset to the `HUNTING` state.
+    7.  When the egg's hatching countdown finishes, a new bird is born with inherited and mutated genes from its parents, and the nest becomes available again (`isAvailable = true`).
