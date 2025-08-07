@@ -1,5 +1,11 @@
 # Boid Predator-Prey Simulation Documentation
 
+
+
+https://github.com/user-attachments/assets/569e8df0-070e-4829-a4e1-db264eacd99b
+
+
+
 This is a dynamic 2D ecosystem simulation featuring procedurally generated plants, evolving birds (predators), and bees (prey). The simulation demonstrates concepts of artificial life, including flocking behavior, predator-prey dynamics, resource gathering, and genetic evolution.
 
 For more detailed information on specific mechanics, see the other documentation files:
