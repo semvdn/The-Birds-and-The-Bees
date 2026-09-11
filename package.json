@@ -1,0 +1,11 @@
+{
+  "name": "the-birds-and-the-bees",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

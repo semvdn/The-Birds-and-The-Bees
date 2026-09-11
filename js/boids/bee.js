@@ -36,10 +36,10 @@ export class Bee extends Boid {
             return;
         }
 
-        const localBoids = world.beeGrid.query(this);
+        const localBoids = world.beeGrid.query(this, this.settings.visualRange);
         this.applyBoidRules(world, localBoids);
 
-        const localPredators = world.birdGrid.query(this);
+        const localPredators = world.birdGrid.query(this, this.settings.visualRange);
         const evade = this.evade(localPredators);
         this.velocity.x += evade.x * this.dna.evadeFactor;
         this.velocity.y += evade.y * this.dna.evadeFactor;
@@ -60,7 +60,7 @@ export class Bee extends Boid {
     findBestFlower(flowers) {
         let bestFlower = null;
         let bestScore = -1;
-        const visualRangeSq = this.dna.visualRange * this.dna.visualRange;
+        const visualRangeSq = this.settings.visualRange * this.settings.visualRange;
 
         for (const flower of flowers) {
             if (flower === this.lastVisitedFlower || flower.beesOnFlower >= 10) continue;
@@ -210,7 +210,6 @@ export class Bee extends Boid {
             } else {
                 // If population is healthy, use a score-based system
                 let maxScore = -Infinity;
-                // --- SOLUTION: Scale the hardcoded danger radius by the world scale ---
                 const dangerRadius = HIVE_DANGER_RADIUS * this.worldScale;
                 const dangerRadiusSq = dangerRadius * dangerRadius;
 
@@ -219,9 +218,9 @@ export class Bee extends Boid {
                     const dy = this.position.y - hive.position.y;
                     const distanceSq = dx * dx + dy * dy;
                     
-                    // Count birds near the hive to determine danger level (OPTIMIZED)
+                    // Count birds near the hive to determine danger level.
                     let danger = 0;
-                    const nearbyBirds = world.birdGrid.query(hive); // Use grid query
+                    const nearbyBirds = world.birdGrid.query(hive, dangerRadius);
                     for (const bird of nearbyBirds) {
                         if (bird.isAlive) {
                             const birdDx = hive.position.x - bird.position.x;
@@ -285,7 +284,7 @@ export class Bee extends Boid {
 
     evade(predators) {
         const steering = { x: 0, y: 0 };
-        const visualRangeSq = this.dna.visualRange * this.dna.visualRange;
+        const visualRangeSq = this.settings.visualRange * this.settings.visualRange;
 
         for (const predator of predators) {
             const dx = this.position.x - predator.position.x;

@@ -1,5 +1,5 @@
 import { Boid } from './boid.js';
-import { NEST_SETTINGS, MAX_BIRDS } from '../presets.js';
+import { NEST_SETTINGS } from '../presets.js';
 import { preRenderBird } from './drawing.js';
 
 export class Bird extends Boid {
@@ -25,12 +25,12 @@ export class Bird extends Boid {
             return;
         }
         
-        const localBoids = world.birdGrid.query(this);
+        const localBoids = world.birdGrid.query(this, this.settings.visualRange);
         this.applyBoidRules(world, localBoids);
 
         switch (this.state) {
             case 'HUNTING':
-                const localPrey = world.beeGrid.query(this);
+                const localPrey = world.beeGrid.query(this, this.settings.visualRange);
                 const hunt = this.hunt(localPrey);
                 this.velocity.x += hunt.x * this.settings.huntFactor;
                 this.velocity.y += hunt.y * this.settings.huntFactor;
@@ -43,7 +43,7 @@ export class Bird extends Boid {
             case 'SEEKING_MATE':
                 // --- POPULATION CHECK ---
                 // If the world is full, don't even bother trying to find a mate.
-                if (world.birds.length >= MAX_BIRDS) {
+                if (world.birds.length + world.pendingBirds >= world.maxBirds) {
                     this.state = 'HUNTING'; // Go back to surviving.
                     this.beesCaught = 0;   // Reset the counter, creating a "cost" for the failed attempt.
                     return; // Exit behavior for this frame.

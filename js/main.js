@@ -3,9 +3,8 @@ import {
     BIRD_SETTINGS, BEE_SETTINGS, HIVE_SETTINGS, NEST_SETTINGS,
     INITIAL_BEES, MAX_BEES, INITIAL_BIRDS, MAX_BIRDS, 
     MIN_HOME_SEPARATION, GLOBAL_WIND_STRENGTH as DEFAULT_WIND_STRENGTH, MIN_FLOWERS,
-    BIRD_GENES, PARENT_PRESETS, MUTATION_RATE, MUTATION_AMOUNT,
-    BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE, GROUND_HEIGHT,
-    BEE_POPULATION_THRESHOLD
+    BIRD_GENES, PARENT_PRESETS,
+    BIRD_DNA_TEMPLATE, BEE_DNA_TEMPLATE, GROUND_HEIGHT
 } from './presets.js';
 import { setupPlantData } from './lsystem.js';
 import { preRenderPlant, drawPlant } from './drawing.js';
@@ -17,6 +16,7 @@ import {
 } from './boids/drawing.js';
 import { Grid } from './boids/grid.js';
 import { generateFavicon } from './favicon.js';
+import { determineInheritance, mutate } from './genetics.js';
 
 const canvas = document.getElementById('treeCanvas');
 const ctx = canvas.getContext('2d');
@@ -75,8 +75,12 @@ let G_WORLD_SCALE = 1.0;
 let animationFrameId;
 let lastFrameTime = 0;
 let accumulator = 0;
-const FIXED_TIMESTEP_MS = 1000 / 60; 
+const FIXED_TIMESTEP_MS = 1000 / 60;
+const MAX_FRAME_DELTA_MS = 250;
+const MAX_HISTORY_SAMPLES = 900; // 30 minutes at one sample every two seconds
+const RESIZE_DEBOUNCE_MS = 250;
 let renderFpsInterval, renderThen;
+let resizeTimer;
 
 
 // --- Data for Graphs ---
@@ -91,101 +95,6 @@ function initializeTraitHistory() {
     Object.keys(BEE_DNA_TEMPLATE).forEach(trait => {
         traitHistory.bees[trait] = { mean: [], min: [], max: [] };
     });
-}
-
-function mutate(value, min, max) {
-    if (Math.random() < MUTATION_RATE) {
-        const range = max - min;
-        const change = (Math.random() - 0.5) * 2 * range * MUTATION_AMOUNT;
-        return Math.max(min, Math.min(max, value + change));
-    }
-    return value;
-}
-
-function blendHexColors(hex1, hex2) {
-    const num1 = parseInt(hex1.slice(1), 16), num2 = parseInt(hex2.slice(1), 16);
-    const r1 = (num1 >> 16) & 0xFF, g1 = (num1 >> 8) & 0xFF, b1 = num1 & 0xFF;
-    const r2 = (num2 >> 16) & 0xFF, g2 = (num2 >> 8) & 0xFF, b2 = num2 & 0xFF;
-    const avgR = Math.floor((r1 + r2) / 2), avgG = Math.floor((g1 + g2) / 2), avgB = Math.floor((b1 + b2) / 2);
-    const newHex = ((avgR << 16) | (avgG << 8) | avgB).toString(16).padStart(6, '0');
-    return `#${newHex}`;
-}
-
-function mutateHexColor(hex) {
-    if (Math.random() > MUTATION_RATE) return hex;
-    let num = parseInt(hex.slice(1), 16);
-    let r = (num >> 16) & 0xFF, g = (num >> 8) & 0xFF, b = num & 0xFF;
-    const amount = 30;
-    r = Math.max(0, Math.min(255, r + Math.floor((Math.random() - 0.5) * amount)));
-    g = Math.max(0, Math.min(255, g + Math.floor((Math.random() - 0.5) * amount)));
-    b = Math.max(0, Math.min(255, b + Math.floor((Math.random() - 0.5) * amount)));
-    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
-}
-
-function interpolateVertices(v1, v2, weight) {
-    return v1.map((p1, i) => {
-        const p2 = v2[i];
-        const newX = (1 - weight) * p1[0] + weight * p2[0];
-        const newY = (1 - weight) * p1[1] + weight * p2[1];
-        return [newX, newY];
-    });
-}
-
-function mutateVertices(vertices, ignoreIndices = []) {
-    if (Math.random() > MUTATION_RATE) return vertices;
-    const amount = 0.2;
-    return vertices.map((v, i) => {
-        if (ignoreIndices.includes(i)) return v;
-        return [ v[0] + (Math.random() - 0.5) * amount, v[1] + (Math.random() - 0.5) * amount ];
-    });
-}
-
-function determineInheritance(genes1, dna1, genes2, dna2) {
-    const inheritedDna = {};
-    for (const key in dna1) {
-        const avg = (dna1[key] + dna2[key]) / 2;
-        const template = BIRD_DNA_TEMPLATE[key];
-        inheritedDna[key] = mutate(avg, template.min, template.max);
-    }
-    const weight = Math.random();
-    const newBodyVertices = interpolateVertices(genes1.bodyVertices, genes2.bodyVertices, weight);
-    let inheritedBaseBeak = Math.random() < 0.5 ? genes1.baseGenes.baseBeak : genes2.baseGenes.baseBeak;
-    let newBeakVertices;
-    if (Math.random() < MUTATION_RATE) {
-        const beakKeys = Object.keys(BIRD_GENES.BEAK_SHAPES);
-        inheritedBaseBeak = BIRD_GENES.BEAK_SHAPES[beakKeys[Math.floor(Math.random() * beakKeys.length)]];
-        newBeakVertices = inheritedBaseBeak.vertices;
-    } else {
-        const interpolatedBeak = interpolateVertices(genes1.beakVertices, genes2.beakVertices, weight);
-        newBeakVertices = mutateVertices(interpolatedBeak, [2]);
-    }
-    let inheritedBaseTail = Math.random() < 0.5 ? genes1.baseGenes.baseTail : genes2.baseGenes.baseTail;
-    let newTailVertices;
-    if (Math.random() < MUTATION_RATE) {
-        const tailKeys = Object.keys(BIRD_GENES.TAIL_SHAPES);
-        inheritedBaseTail = BIRD_GENES.TAIL_SHAPES[tailKeys[Math.floor(Math.random() * tailKeys.length)]];
-        newTailVertices = inheritedBaseTail.vertices(newBodyVertices);
-    } else {
-        const tail1 = genes1.baseGenes.baseTail.vertices(newBodyVertices);
-        const tail2 = genes2.baseGenes.baseTail.vertices(newBodyVertices);
-        const interpolatedTail = interpolateVertices(tail1, tail2, weight);
-        newTailVertices = mutateVertices(interpolatedTail, [0, interpolatedTail.length - 1]);
-    }
-    const palette1 = genes1.palette.colors, palette2 = genes2.palette.colors;
-    const newPaletteColors = {};
-    for (const key in palette1) {
-        if (key === 'outline' || key === 'beak') { newPaletteColors[key] = palette1[key]; } 
-        else {
-            const blendedColor = blendHexColors(palette1[key], palette2[key]);
-            newPaletteColors[key] = mutateHexColor(blendedColor);
-        }
-    }
-    const newPalette = { name: "Hybrid", colors: newPaletteColors };
-    const inheritedGenes = {
-        palette: newPalette, bodyVertices: newBodyVertices, beakVertices: newBeakVertices,
-        tailVertices: newTailVertices, baseGenes: { baseBeak: inheritedBaseBeak, baseTail: inheritedBaseTail, }
-    };
-    return { inheritedGenes, inheritedDna };
 }
 
 function recalculateHomePositions() {
@@ -207,7 +116,7 @@ function recalculateHomePositions() {
 function gameLoop(timestamp) {
     animationFrameId = requestAnimationFrame(gameLoop);
 
-    const deltaTime = timestamp - lastFrameTime;
+    const deltaTime = Math.min(timestamp - lastFrameTime, MAX_FRAME_DELTA_MS);
     lastFrameTime = timestamp;
     accumulator += deltaTime;
 
@@ -239,7 +148,12 @@ function simulationUpdate() {
     
     recalculateHomePositions();
     
-    const world = { birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid, groundHeight: GROUND_HEIGHT };
+    const world = {
+        birds, bees, flowers, hives, nests, canvas, birdGrid, beeGrid,
+        groundHeight: GROUND_HEIGHT,
+        maxBirds: simSettings.maxBirds,
+        pendingBirds: nests.filter(nest => nest.hasEgg).length,
+    };
     
     for (const flower of flowers) {
         for (const petal of flower.petalPoints) {
@@ -324,7 +238,8 @@ function handleBirdReproduction() {
         }
         if (nest.occupants.size >= 2 && nest.nestingCountdown > 0) {
             nest.nestingCountdown--;
-            if (nest.nestingCountdown <= 0 && birds.length < simSettings.maxBirds) {
+            const pendingEggs = nests.filter(candidate => candidate.hasEgg).length;
+            if (nest.nestingCountdown <= 0 && birds.length + pendingEggs < simSettings.maxBirds) {
                 nest.hasEgg = true;
                 nest.hatchingCountdown = NEST_SETTINGS.HATCH_TIME_SECONDS * 60;
                 const matingPair = Array.from(nest.occupants);
@@ -336,7 +251,7 @@ function handleBirdReproduction() {
         }
         if (nest.hasEgg) {
             nest.hatchingCountdown--;
-            if (nest.hatchingCountdown <= 0) {
+            if (nest.hatchingCountdown <= 0 && birds.length < simSettings.maxBirds) {
                 const { inheritedGenes, inheritedDna } = determineInheritance(
                     nest.parentGenes[0], nest.parentDna[0], nest.parentGenes[1], nest.parentDna[1]
                 );
@@ -398,6 +313,17 @@ function updateGraphData() {
             traitHistory.bees[trait].max.push(null);
         }
     });
+
+    if (traitHistory.time.length > MAX_HISTORY_SAMPLES) {
+        traitHistory.time.shift();
+        for (const species of [traitHistory.birds, traitHistory.bees]) {
+            for (const trait of Object.values(species)) {
+                trait.mean.shift();
+                trait.min.shift();
+                trait.max.shift();
+            }
+        }
+    }
 }
 
 function drawPopulationGraph() {
@@ -788,8 +714,11 @@ applyLiveSettingsBtn.addEventListener('click', applyLiveSettings);
 
 // --- UI Event Listeners ---
 window.addEventListener('resize', () => {
-    saveSettings();
-    initialize();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        saveSettings();
+        initialize();
+    }, RESIZE_DEBOUNCE_MS);
 });
 
 windToggle.addEventListener('change', () => {
@@ -846,18 +775,17 @@ function setupUI() {
     } else {
         document.body.classList.add('no-touch-device');
         window.addEventListener('keydown', (event) => {
-            if (event.key === 'M' || event.key === 'm') {
-                toggleOverlay(statsOverlay);
-            }
-            if (event.key === 'p' || event.key === 'p') {
-                toggleOverlay(performanceOverlay);
-            }
+            const key = event.key.toLowerCase();
+            if (key === 'm') toggleOverlay(statsOverlay);
+            if (key === 'p') toggleOverlay(performanceOverlay);
         });
     }
 
     hamburgerBtn.addEventListener('click', () => {
-        hamburgerBtn.classList.toggle('is-active');
-        mobileNav.classList.toggle('is-active');
+        const isOpen = hamburgerBtn.classList.toggle('is-active');
+        mobileNav.classList.toggle('is-active', isOpen);
+        hamburgerBtn.setAttribute('aria-expanded', String(isOpen));
+        hamburgerBtn.setAttribute('aria-label', isOpen ? 'Close simulation panels' : 'Open simulation panels');
     });
 
     navLinks.forEach(link => {
@@ -875,6 +803,8 @@ function setupUI() {
             
             hamburgerBtn.classList.remove('is-active');
             mobileNav.classList.remove('is-active');
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+            hamburgerBtn.setAttribute('aria-label', 'Open simulation panels');
         });
     });
 

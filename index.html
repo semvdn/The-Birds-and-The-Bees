@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>The Birds and the Bees</title>
-    <!-- Critical for responsive design -->
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An artificial-life predator-prey simulation with evolving birds and bees in a procedurally generated L-system forest.">
+    <title>The Birds and the Bees</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/overlay.css">
     <!-- Include Plotly.js for charting -->
@@ -13,14 +14,14 @@
     <canvas id="treeCanvas"></canvas>
 
     <!-- Mobile-only Hamburger Menu -->
-    <button id="hamburger-btn" class="hamburger">
+    <button id="hamburger-btn" class="hamburger" type="button" aria-label="Open simulation panels" aria-controls="mobile-nav" aria-expanded="false">
         <span class="hamburger-box">
             <span class="hamburger-inner"></span>
         </span>
     </button>
-    <nav id="mobile-nav">
-        <button class="nav-link" data-overlay-id="overlay">Toggle Stats Panel</button>
-        <button class="nav-link" data-overlay-id="performance-overlay">Toggle Settings Panel</button>
+    <nav id="mobile-nav" aria-label="Simulation panels">
+        <button class="nav-link" type="button" data-overlay-id="overlay">Toggle Stats Panel</button>
+        <button class="nav-link" type="button" data-overlay-id="performance-overlay">Toggle Settings Panel</button>
     </nav>
     
     <!-- Set overlays to be hidden by default to prevent flash on load -->
@@ -66,8 +67,8 @@
                 <input type="number" id="max-birds" min="1">
             </div>
             <div class="button-row">
-                <button id="apply-settings">Apply & Restart</button>
-                <button id="reset-settings">Reset to Default</button>
+                <button id="apply-settings" type="button">Apply & Restart</button>
+                <button id="reset-settings" type="button">Reset to Default</button>
             </div>
         </fieldset>
 
@@ -102,7 +103,7 @@
                 <span id="bee-speed-value">1.0x</span>
             </div>
             <div class="button-row">
-                 <button id="apply-live-settings">Apply Live</button>
+                 <button id="apply-live-settings" type="button">Apply Live</button>
             </div>
         </fieldset>
     </div>

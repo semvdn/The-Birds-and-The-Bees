@@ -30,18 +30,21 @@ export class Grid {
     }
 
     /**
-     * Queries the grid to find all boids within a certain range of a given boid.
-     * It checks the boid's cell and all immediately adjacent cells.
-     * @param {Boid} boid The boid to find neighbors for.
-     * @returns {Boid[]} An array of nearby boids.
+     * Returns candidates from every grid cell intersecting the requested radius.
+     * Callers still perform exact distance checks; this method only guarantees
+     * that no in-range agent is omitted because it lives more than one cell away.
+     * @param {{position: {x: number, y: number}}} boid Entity at the query origin.
+     * @param {number} radius Maximum interaction radius in pixels.
+     * @returns {object[]} Candidate entities from the covered cells.
      */
-    query(boid) {
+    query(boid, radius = this.cellSize) {
         const nearby = [];
         const boidCol = Math.floor(boid.position.x / this.cellSize);
         const boidRow = Math.floor(boid.position.y / this.cellSize);
+        const cellRadius = Math.max(1, Math.ceil(radius / this.cellSize));
 
-        for (let row = boidRow - 1; row <= boidRow + 1; row++) {
-            for (let col = boidCol - 1; col <= boidCol + 1; col++) {
+        for (let row = boidRow - cellRadius; row <= boidRow + cellRadius; row++) {
+            for (let col = boidCol - cellRadius; col <= boidCol + cellRadius; col++) {
                 if (col >= 0 && col < this.cols && row >= 0 && row < this.rows) {
                     const index = col + row * this.cols;
                     nearby.push(...this.cells[index]);

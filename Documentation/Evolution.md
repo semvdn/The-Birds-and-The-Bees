@@ -23,7 +23,7 @@ The simulation uses two different models for reproduction.
 
 ### Bird Reproduction (Sexual)
 
-When a new bird is created from two parents in a nest, its genetics are determined by the [`determineInheritance`](../js/main.js:143) function in [`js/main.js`](../js/main.js).
+When a new bird is created from two parents in a nest, its genetics are determined by the [`determineInheritance`](../js/genetics.js) function in [`js/genetics.js`](../js/genetics.js).
 
 1.  **DNA Blending & Mutation:** The offspring's value for each DNA trait is calculated by taking the **average** of its two parents' values, and then applying a potential mutation to that average.
 2.  **Appearance Blending:** As described in the [Appearance documentation](./Appearance.md), physical features like shape and color are also blended from the two parents, with their own specific mutation rules.
@@ -34,15 +34,15 @@ Bees reproduce asexually. When a hive has accumulated enough nectar, it produces
 
 1.  **DNA Pooling:** When a bee delivers nectar, its DNA is added to the hive's `dnaPool`.
 2.  **Averaging:** When new bees are created, the hive **averages** the DNA from all contributors in the pool to create a new base DNA.
-3.  **Mutation:** This averaged DNA is then mutated for each new bee, creating slight variations. This process is handled within the [`handleBeeReproduction`](../js/main.js:291) function in [`js/main.js`](../js/main.js).
+3.  **Mutation:** This averaged DNA is then mutated for each new bee, creating slight variations. This process is handled within the `handleBeeReproduction` function in [`js/main.js`](../js/main.js).
 
 This collective inheritance means that successful foragers (those who contribute the most nectar) have the greatest influence on the next generation's genetics.
 
 ## Mutation: The Engine of Change
 
-After parental or hive traits are blended, mutation introduces new genetic variations. This process is handled by the [`mutate`](../js/main.js:96) function.
+After parental or hive traits are blended, mutation introduces new genetic variations. This process is handled by the [`mutate`](../js/genetics.js) function.
 
-1.  **DNA "Micro" Mutation:** Each individual DNA trait has a small chance ([`MUTATION_RATE`](../js/presets.js:19)) of being slightly increased or decreased. The magnitude of this change is controlled by [`MUTATION_AMOUNT`](../js/presets.js:20). This is the primary mechanism for gradual, incremental evolution in both species.
+1.  **DNA "Micro" Mutation:** Each individual DNA trait has a small chance (`MUTATION_RATE` in [`js/presets.js`](../js/presets.js)) of being slightly increased or decreased. The magnitude of this change is controlled by `MUTATION_AMOUNT` in [`js/presets.js`](../js/presets.js). This is the primary mechanism for gradual, incremental evolution in both species.
 
 2.  **Appearance Mutations (Birds Only):**
     -   **Color Mutation:** Each color in a new bird's blended palette has a chance to have its RGB values randomly shifted, creating subtle new shades.
@@ -58,6 +58,6 @@ The simulation does not have a direct "survival of the fittest" rule. Instead, n
 
 ## Visualizing Evolution
 
-The overlay provides powerful tools for observing these mechanics in real-time. The "Trait Evolution" graphs plot the population's **mean, minimum, and maximum** values for each DNA trait over the entire course of the simulation. This allows an observer to directly see:
+The overlay provides powerful tools for observing these mechanics in real-time. The "Trait Evolution" graphs plot the population's **mean, minimum, and maximum** values for each DNA trait over a rolling history window (currently 30 minutes at the default sampling rate). This allows an observer to directly see:
 -   The direction of evolutionary pressure on a trait (is the average increasing or decreasing?).
 -   The genetic diversity of the population (is the gap between the min and max values wide or narrow?).

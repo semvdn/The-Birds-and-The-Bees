@@ -11,7 +11,7 @@ export const MIN_HOME_SEPARATION = 40; // Minimum pixels between nests/hives on 
 export const GROUND_HEIGHT = 30; // Define ground height for physics and drawing
 export const MIN_FLOWERS = 7; // Minimum number of flower-producing shrubs
 export const BEE_MAX_LIFETIME_SECONDS = 60; // A bee can live for up to a minute
-export const BIRD_MAX_LIFETIME_SECONDS = 120; // A bird can live for up to 3 minutes
+export const BIRD_MAX_LIFETIME_SECONDS = 120; // A bird can live for up to 2 minutes
 export const GRAVITY = 0.1; // Downward force on dead boids
 export const DEATH_FADE_TIME = 120; // 2 seconds to fade out on the ground
 
