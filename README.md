@@ -34,16 +34,6 @@ npm run dev
 
 Then open `http://localhost:8000` in a modern browser. The `dev` script serves the repository directly with `http-server`; GitHub Pages likewise serves the source without a bundling step.
 
-## Tests
-
-The regression suite uses Node's built-in test runner:
-
-```bash
-npm test
-```
-
-Node 20 or newer is recommended. GitHub Actions runs the same suite on pushes to `main` and on pull requests.
-
 ## Documentation
 
 - [`Boids.md`](Documentation/Boids.md) — flocking, agent state machines, predation, and reproduction.
@@ -51,17 +41,10 @@ Node 20 or newer is recommended. GitHub Actions runs the same suite on pushes to
 - [`Appearance.md`](Documentation/Appearance.md) — heritable bird geometry and color.
 - [`Plants.md`](Documentation/Plants.md) — stochastic L-systems and plant pre-rendering.
 
-## Repository layout
-
-```text
-js/
-  boids/        agent behavior, spatial grid, and rendering
-  genetics.js  inheritance and mutation logic
-  main.js       world lifecycle, reproduction, UI, and statistics
-Documentation/  mechanism-focused project notes
-tests/          deterministic regression tests
-```
-
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
+
+## AI Use
+
+Generative AI, primarily OpenAI's GPT 5.1-codex-high, was used extensively as a development tool throughout this project.
