@@ -25,17 +25,18 @@ The settings panel can change population caps, target render FPS, wind strength,
 
 ## Run locally
 
-The project has no build step. Because it uses JavaScript modules, serve the repository over HTTP rather than opening `index.html` directly:
+The project has no build step. Install the development dependency and start the local static server through npm:
 
 ```bash
-python -m http.server 8000
+npm install
+npm run dev
 ```
 
-Then open `http://localhost:8000` in a modern browser. Any equivalent static-file server works.
+Then open `http://localhost:8000` in a modern browser. The `dev` script serves the repository directly with `http-server`; GitHub Pages likewise serves the source without a bundling step.
 
 ## Tests
 
-The regression suite uses Node's built-in test runner and has no package dependencies:
+The regression suite uses Node's built-in test runner:
 
 ```bash
 npm test
